@@ -24,17 +24,13 @@ To contribute code:
 
 All commits must follow [Conventional Commits](https://www.conventionalcommits.org/) (enforced via commitlint). See `CLAUDE.md` for the list of valid types and examples.
 
-## Versioning and deprecation policy
+## Versioning
 
 momapy loosely follows [semantic versioning](https://semver.org/) as a
 guideline, not a strict contract.
 
 Below `1.0` the public API is not stable and may change in a breaking way in any
 release.
-
-From `1.0` onward, breaking changes are introduced gradually where practical: a
-deprecated API keeps working and emits a `DeprecationWarning` for at least one
-release before removal, naming a replacement when one exists.
 
 The public API is what the documentation and each subpackage's `__all__`
 describe. Underscore-prefixed names are not public and may change at any time.
