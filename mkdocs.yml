@@ -1,10 +1,10 @@
-site_name: momapy
+site_name: MomaPy
 site_url: https://adrienrougny.github.io/momapy/
-extra:
-  version:
-    provider: mike
-    default: stable
-    alias: true
+hooks:
+  # brand every prose mention of momapy as MomaPy
+  - mkdocs_extensions/brand.py
+  # set fenced code blocks in titled frames, like notebook cells
+  - mkdocs_extensions/code_frames.py
 nav:
   - Home: index.md
   - User manual: user_manual/main.ipynb
@@ -42,15 +42,17 @@ nav:
   - Changelog: CHANGELOG.md
   - About: about.md
 theme:
-  name: material
-  favicon: assets/favicon.png
-  logo: assets/favicon.png
-  features:
-    - navigation.instant
-    - navigation.tabs
-    - navigation.tabs.sticky
-    - navigation.sections
-    - navigation.expand
+  name: shadcn
+  favicon: assets/favicon.svg
+  icon: assets/favicon.svg
+  # top-level sections go in the top bar, so the sidebar can nest deeper
+  topbar_sections: true
+extra_css:
+  - stylesheets/extra.css
+extra_javascript:
+  - javascripts/layout.js
+  - javascripts/code_frames.js
+  - javascripts/scrollbars.js
 plugins:
   - mkdocs-jupyter:
       ignore_h1_titles: True

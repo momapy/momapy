@@ -1,12 +1,12 @@
-# <span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span>
+# momapy
 
-<span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> is a library for working with molecular maps.
+momapy is a library for working with molecular maps.
 It currently supports [SBGN](https://www.sbgn.org) and [CellDesigner](https://www.celldesigner.org/) maps.
 Its key feature is its definition of a map, that is formed of two entities: a model, that describes what concepts are represented, and a layout, that describes how these concepts are represented.
 This definition is borrowed from [SBML](https://www.sbml.org) and its extensions layout+render, that allow users to add a layout to an SBML model.
-<span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> aims at extending this definition to SBGN and CellDesigner maps.
+momapy aims at extending this definition to SBGN and CellDesigner maps.
 
-Features of <span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> include the following:
+Features of momapy include the following:
 
 * support for SBGN PD and AF maps (read/write SBGN-ML with annotations, rendering information, and notes) and CellDesigner (read/write, with annotations and notes)
 * read-only support for SBML (model only, no layout)
@@ -23,13 +23,13 @@ Features of <span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span 
 
 ## Installation
 
-<span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> is available as a Python package and can be installed with pip as follows (Python >=3.10,<=3.14):
+momapy is available as a Python package and can be installed with pip as follows (Python >=3.10,<=3.14):
 
 `pip install momapy`
 
 ### Optional dependencies
 
-<span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> includes several optional dependencies for rendering maps with the skia or cairo backends:
+momapy includes several optional dependencies for rendering maps with the skia or cairo backends:
 
 **skia**
 
@@ -58,7 +58,7 @@ All optional dependencies can also be installed together:
 
 ## Usage
 
-Typical usage of <span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> includes reading a map and exploring its model:
+Typical usage of momapy includes reading a map and exploring its model:
 
 ```python
 from momapy.io import read
@@ -78,7 +78,7 @@ map_ = read("my_map.sbgn").obj
 render_map(map_, "my_file.svg")
 ```
 
-<span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> also provides a command-line interface:
+momapy also provides a command-line interface:
 
 ```bash
 momapy render my_map.sbgn -o output.pdf
@@ -98,8 +98,8 @@ styled_map = apply_style_sheet(map_, style_sheet)
 
 ## User manual
 
-A user manual showcasing the main feature of <span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span> is available here: [User manual](user_manual/main.ipynb).
+A user manual showcasing the main feature of momapy is available here: [User manual](user_manual/main.ipynb).
 
 ## Documentation
 
-A complete documentaton for <span style="font-weight:bold;color:rgb(22 66 81)">moma</span><span style="font-weight:bold;color:rgb(242 200 100)">py</span>'s API is available here: [API reference](api_reference/index.md).
+A complete documentaton for momapy's API is available here: [API reference](api_reference/index.md).
