@@ -195,7 +195,7 @@ class TextLayout(LayoutElement):
             width = 0.0
         return width
 
-    def _get_line_positions(self) -> list[tuple[str, Point, float]]:
+    def _get_line_positions(self) -> list[tuple[str, float, float, float]]:
         line_positions = []
         font_file_path = self._get_font_file_path(
             self.font_family, self.font_weight, self.font_style
@@ -228,18 +228,17 @@ class TextLayout(LayoutElement):
                 )
             else:
                 y = self.position.y - text_height / 2 + font_ascent + i * font_height
-            position = Point(x, y)
-            line_positions.append((line, position, line_width))
+            line_positions.append((line, x, y, line_width))
         return line_positions
 
     def drawing_elements(self) -> list[DrawingElement]:
         """Return the drawing elements of the text layout."""
         drawing_elements = []
         lines_positions = self._get_line_positions()
-        for line, position, _ in lines_positions:
+        for line, x, y, _ in lines_positions:
             text = Text(
                 text=line,
-                point=position,
+                point=Point(x, y),
             )
             drawing_elements.append(text)
         group = Group(
@@ -271,19 +270,19 @@ class TextLayout(LayoutElement):
         )
         font = self._make_font(font_file_path, self.font_size)
         font_ascent, font_descent, _ = self._get_font_parameters(font)
-        line, position, line_width = line_positions[0]
-        min_x = position.x
+        line, x, y, line_width = line_positions[0]
+        min_x = x
         max_x = min_x + line_width
-        min_y = position.y - font_ascent
-        max_y = position.y + font_descent
-        for line, position, line_width in line_positions[1:]:
-            start_x = position.x
+        min_y = y - font_ascent
+        max_y = y + font_descent
+        for line, x, y, line_width in line_positions[1:]:
+            start_x = x
             if start_x < min_x:
                 min_x = start_x
             end_x = start_x + line_width
             if end_x > max_x:
                 max_x = end_x
-            max_y = position.y + font_descent
+            max_y = y + font_descent
         return Bbox(
             Point(min_x / 2 + max_x / 2, min_y / 2 + max_y / 2),
             max_x - min_x,

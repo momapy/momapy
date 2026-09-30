@@ -7,6 +7,7 @@ import momapy.core.elements
 import momapy.core.layout
 import momapy.geometry
 import momapy.coloring
+import momapy.drawing
 
 
 # Minimal concrete Arc subclass for testing Arc.fraction()
@@ -114,6 +115,18 @@ def test_layout_with_elements(sample_point):
         layout_elements=[text_layout],
     )
     assert len(layout.layout_elements) == 1
+
+
+def test_text_layout_bbox_centered_on_position():
+    """The bbox of a centered text layout is centered on its position."""
+    position = momapy.geometry.Point(80.0, 660.0)
+    text_layout = momapy.core.layout.TextLayout(
+        text="ERK",
+        position=position,
+        font_family=momapy.drawing.DEFAULT_FONT_FAMILY,
+        font_size=11.0,
+    )
+    assert text_layout.bbox().position == position
 
 
 class TestArcFraction:
