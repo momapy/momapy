@@ -100,7 +100,9 @@ def make_stoichiometry_layout(
     if sbgnml_label is not None:
         stoichiometry_layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=stoichiometry_layout_element.position,
+            position=get_label_position(
+                sbgnml_label, stoichiometry_layout_element.position
+            ),
         )
     layout_element.layout_elements.append(stoichiometry_layout_element)
 
@@ -132,6 +134,20 @@ def set_position_and_size(
     layout_element.height = h
 
 
+def get_label_position(
+    sbgnml_label: "lxml.objectify.ObjectifiedElement",
+    default_position: Point,
+) -> Point:
+    sbgnml_bbox = getattr(sbgnml_label, "bbox", None)
+    if sbgnml_bbox is None:
+        return default_position
+    x = float(sbgnml_bbox.get("x"))
+    y = float(sbgnml_bbox.get("y"))
+    width = float(sbgnml_bbox.get("w"))
+    height = float(sbgnml_bbox.get("h"))
+    return Point(x + width / 2, y + height / 2)
+
+
 def make_compartment(
     reading_context: "SBGNMLReadingContext",
     sbgnml_compartment: "lxml.objectify.ObjectifiedElement",
@@ -155,7 +171,7 @@ def make_compartment(
     if sbgnml_label is not None:
         layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=layout_element.center(),
+            position=get_label_position(sbgnml_label, layout_element.center()),
         )
     return layout_element
 
@@ -184,7 +200,7 @@ def make_entity_pool_or_subunit(
     if sbgnml_label is not None:
         layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=layout_element.label_center(),
+            position=get_label_position(sbgnml_label, layout_element.label_center()),
         )
     return layout_element
 
@@ -213,7 +229,7 @@ def make_activity(
     if sbgnml_label is not None:
         layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=layout_element.label_center(),
+            position=get_label_position(sbgnml_label, layout_element.label_center()),
         )
     return layout_element
 
@@ -273,7 +289,7 @@ def make_unit_of_information(
     if sbgnml_label is not None:
         layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=layout_element.label_center(),
+            position=get_label_position(sbgnml_label, layout_element.label_center()),
             font_size=DEFAULT_AUXILIARY_UNIT_FONT_SIZE,
         )
     layout_element = object_from_builder(layout_element)
@@ -305,7 +321,7 @@ def make_submap(
     if sbgnml_label is not None:
         layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=layout_element.center(),
+            position=get_label_position(sbgnml_label, layout_element.center()),
         )
     return layout_element
 
@@ -340,7 +356,7 @@ def make_terminal_or_tag(
     if sbgnml_label is not None:
         layout_element.label = make_text_layout(
             text=sbgnml_label.get("text"),
-            position=layout_element.label_center(),
+            position=get_label_position(sbgnml_label, layout_element.label_center()),
         )
     return layout_element
 

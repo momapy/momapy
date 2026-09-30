@@ -520,3 +520,43 @@ class TestModulationTargetsPort:
         (modulation,) = tuple(model.modulations)
         assert modulation.target is not None
         assert modulation.target in model.processes
+
+
+_COMPARTMENT_LABEL_BBOX_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="map_label_bbox">
+        <glyph id="glyph1" class="compartment">
+            <label text="cytosol">
+                <bbox y="20.0" x="300.0" h="20.0" w="80.0"/>
+            </label>
+            <bbox y="0.0" x="0.0" h="200.0" w="400.0"/>
+        </glyph>
+        <glyph id="glyph2" class="compartment">
+            <label text="nucleus"/>
+            <bbox y="300.0" x="0.0" h="200.0" w="400.0"/>
+        </glyph>
+    </map>
+</sbgn>
+"""
+
+
+class TestLabelBbox:
+    """A label with a bbox is placed at the center of that bbox."""
+
+    @pytest.fixture
+    def sbgn_file(self, tmp_path):
+        path = tmp_path / "compartment_label_bbox.sbgn"
+        path.write_text(_COMPARTMENT_LABEL_BBOX_SBGN)
+        return str(path)
+
+    def test_label_position(self, sbgn_file):
+        from momapy.geometry import Point
+
+        layout = momapy.io.core.read(sbgn_file, return_type="layout").obj
+        labels = {
+            layout_element.id_: layout_element.label.position
+            for layout_element in layout.layout_elements
+        }
+        assert labels["glyph1"] == Point(340.0, 30.0)
+        assert labels["glyph2"] == Point(200.0, 400.0)

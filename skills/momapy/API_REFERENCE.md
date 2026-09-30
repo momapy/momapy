@@ -334,7 +334,7 @@ Purpose: SBGN-AF model classes.
 - `make_text_layout(text, position, font_size=11.0) -> TextLayout`
 - `make_points(sbgnml_points) -> list[Point]`, `make_segments(points) -> list[Segment]`, `make_arc_segments(sbgnml_arc, reverse=False) -> list[Segment]`
 - `make_stoichiometry_layout(sbgnml_stoichiometry, layout_element)`
-- `set_connector_lengths(layout_element, sbgnml_element)`, `set_position_and_size(layout_element, sbgnml_glyph)`
+- `set_connector_lengths(layout_element, sbgnml_element)`, `set_position_and_size(layout_element, sbgnml_glyph)`, `get_label_position(sbgnml_label, default_position) -> Point`
 - `make_compartment(reading_context, sbgnml_compartment)`
 - `make_entity_pool_or_subunit(reading_context, sbgnml_entity_pool_or_subunit, layout_element_cls)`
 - (+ ~20 more for processes, arcs, logical operators, auxiliary units, activities, influences)
