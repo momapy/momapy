@@ -648,3 +648,24 @@ html .jupyter-wrapper .jp-RenderedText pre .ansi-white-fg {
   border-radius: var(--radius-md);
   padding: 0.5rem;
 }
+
+/* Reference of the "How to cite" section of the About page: a card like the
+   code frames, with the paper title (a <cite>, left unbranded by
+   mkdocs_extensions/brand.py) set upright and bold instead of italic. */
+article .citation {
+  margin-block: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--code-frame);
+  line-height: 1.7;
+}
+
+article .citation cite {
+  font-style: normal;
+  font-weight: 600;
+}
+
+article .citation a {
+  overflow-wrap: anywhere;
+}
