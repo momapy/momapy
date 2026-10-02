@@ -3,11 +3,11 @@
 Each standalone ``momapy`` word in the text of a built page (any case) is
 replaced by ``<span class="momapy-brand">`` markup holding the ``Moma`` and
 ``Py`` halves, which ``docs/stylesheets/extra.css`` sets in
-Montserrat with the brand colors. Code is left untouched: text inside
-``<head>``, ``<code>``, ``<pre>``, ``<kbd>``, ``<samp>``, ``<svg>`` and raw-text
-elements is skipped, as are dotted, hyphenated or bracketed names such as
-``momapy.core``, ``momapy-repo`` or ``momapy[all]`` and path segments such as
-``adrienrougny/momapy``. Tag attributes are never rewritten.
+Montserrat with the brand colors. Code and cited titles are left untouched:
+text inside ``<head>``, ``<code>``, ``<pre>``, ``<kbd>``, ``<samp>``, ``<svg>``,
+``<cite>`` and raw-text elements is skipped, as are dotted, hyphenated or
+bracketed names such as ``momapy.core``, ``momapy-repo`` or ``momapy[all]`` and
+path segments such as ``adrienrougny/momapy``. Tag attributes are never rewritten.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ BRAND_MARKUP = (
 # elements whose content is not markup: copied verbatim up to their closing tag
 RAW_TEXT_ELEMENTS = frozenset({"script", "style", "textarea"})
 # elements whose text content must not be branded
-SKIPPED_ELEMENTS = frozenset({"head", "code", "pre", "kbd", "samp", "svg"})
+SKIPPED_ELEMENTS = frozenset({"head", "code", "pre", "kbd", "samp", "svg", "cite"})
 
 
 def brand_html(html: str) -> str:

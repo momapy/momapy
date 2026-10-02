@@ -40,6 +40,7 @@ SOURCE_PATTERN = re.compile(
 )
 LANGUAGE_TITLES = {
     "bash": "Bash",
+    "bibtex": "BibTeX",
     "css": "CSS",
     "json": "JSON",
     "python": "Python",
