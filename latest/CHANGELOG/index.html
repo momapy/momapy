@@ -501,6 +501,11 @@
 <p>The format is based on <a href="https://keepachangelog.com/">Keep a Changelog</a>,
 and this project adheres to <a href="https://www.conventionalcommits.org/">Conventional Commits</a>.</p>
 <h2 id="unreleased">[Unreleased]</h2>
+<h3 id="added">Added</h3>
+<ul>
+<li>Added SVG stroke-linejoin and stroke-linecap <em>(drawing)</em></li>
+<li>Added SVG-like linear and radial gradients with CSS gradient functions <em>(drawing)</em></li>
+</ul>
 <h3 id="cicd">CI/CD</h3>
 <ul>
 <li>Install mkdocs-shadcn in the docs deploy workflows <em>(docs)</em></li>
@@ -510,8 +515,24 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Add a how-to-cite section with a BibTeX entry <em>(about)</em></li>
 <li>Move the docs to the shadcn theme with <span class="momapy-brand"><span class="momapy-brand-moma">Moma</span><span class="momapy-brand-py">Py</span></span> branding and framed code</li>
 </ul>
+<h3 id="fixed">Fixed</h3>
+<ul>
+<li>Place labels from their label bbox when present <em>(sbgn.io.sbgnml)</em></li>
+<li>Compute TextLayout bbox without intermediate rounding <em>(core)</em></li>
+<li>Serialize stoichiometry on write <em>(sbgn.io.sbgnml)</em></li>
+<li>Escape untrusted values in visualize HTML <em>(cli)</em></li>
+<li>Read only the pickle header during detection <em>(io)</em></li>
+</ul>
+<h3 id="miscellaneous">Miscellaneous</h3>
+<ul>
+<li>Track issues with Backlog.md in the workbench</li>
+<li>Moved agent instructions to AGENTS.md</li>
+<li>Cleaned the repo</li>
+<li>Add .harness-sandbox</li>
+</ul>
 <h3 id="other">Other</h3>
 <ul>
+<li>Merge branch 'develop'</li>
 <li>Merge pull request #34 from cha-hin/doc/shadcn-theme</li>
 </ul>
 <p>Redesign the docs</p>
@@ -520,7 +541,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Representative naming, public table, key-shape fixes <em>(mapping)</em> <strong>BREAKING</strong></li>
 </ul>
-<h3 id="fixed">Fixed</h3>
+<h3 id="fixed_1">Fixed</h3>
 <ul>
 <li>Keep model-keyed annotations when returning a model <em>(io.pickle)</em></li>
 </ul>
@@ -529,7 +550,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Cover annotation and notes filtering on projection <em>(io.pickle)</em></li>
 </ul>
 <h2 id="0130-2026-08-06">[0.13.0] - 2026-08-06</h2>
-<h3 id="added">Added</h3>
+<h3 id="added_1">Added</h3>
 <ul>
 <li>Support Bbox in the directional <em>_of functions </em>(positioning)*</li>
 <li>Support pretty_print(max_depth=None) for unlimited depth <em>(utils)</em></li>
@@ -692,7 +713,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Drop stale result.exceptions reference</li>
 <li>Reframe I/O make_* as internal helpers, not public contract</li>
 </ul>
-<h3 id="fixed_1">Fixed</h3>
+<h3 id="fixed_2">Fixed</h3>
 <ul>
 <li>Detect file format independently of the locale encoding <em>(io)</em></li>
 <li>Pin ruff to the 0.14 line for the lint gate <em>(ci)</em></li>
@@ -789,7 +810,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Validate with_alpha range, document <strong>or</strong> percent scale <em>(coloring)</em></li>
 <li>Writer.write returns WriterResult instead of None <em>(sbgn.io.sbgnml)</em></li>
 </ul>
-<h3 id="miscellaneous">Miscellaneous</h3>
+<h3 id="miscellaneous_1">Miscellaneous</h3>
 <ul>
 <li>Drop leftover momapy.transform references</li>
 <li>Adopt ruff D+ANN quality gate and bring the tree into compliance</li>
@@ -803,7 +824,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Del leaked registration loop variables <em>(io,rendering)</em></li>
 </ul>
 <h2 id="0120-2026-06-15">[0.12.0] - 2026-06-15</h2>
-<h3 id="added_1">Added</h3>
+<h3 id="added_2">Added</h3>
 <ul>
 <li>Expose display() and print_source() with optional notebook deps <em>(utils)</em></li>
 </ul>
@@ -816,7 +837,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Regenerate API_REFERENCE.md and fix stale meta docstrings</li>
 </ul>
-<h3 id="fixed_2">Fixed</h3>
+<h3 id="fixed_3">Fixed</h3>
 <ul>
 <li>Correct auxiliary unit sizing and rendering defaults <em>(sbgn)</em></li>
 <li>Serialize AF units of information with entity child <em>(sbgn.io.sbgnml)</em></li>
@@ -831,7 +852,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Resolve residue angle via mapping, not layout-id parsing <em>(celldesigner.writer)</em></li>
 </ul>
-<h3 id="fixed_3">Fixed</h3>
+<h3 id="fixed_4">Fixed</h3>
 <ul>
 <li>Pass module name string to LogicalOperator ForwardRef <em>(sbgn.model)</em></li>
 <li>Key modification/structural-state layout ids on alias, not species <em>(celldesigner.reader)</em></li>
@@ -848,12 +869,12 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Identity-keyed multidict for xml_id/source_id model element mappings <em>(io)</em></li>
 <li>Identity-keyed inverse for LayoutModelMapping <em>(core.mapping)</em></li>
 </ul>
-<h3 id="fixed_4">Fixed</h3>
+<h3 id="fixed_5">Fixed</h3>
 <ul>
 <li>Source subunit alias ids from model walk, not mapping lookup <em>(celldesigner.writer)</em></li>
 </ul>
 <h2 id="0110-2026-05-04">[0.11.0] - 2026-05-04</h2>
-<h3 id="added_2">Added</h3>
+<h3 id="added_3">Added</h3>
 <ul>
 <li>Replace Degraded model class with layout-driven emission for external flux <em>(celldesigner)</em></li>
 <li>Add snap_arcs option to size-changing tidy helpers <em>(sbgn,celldesigner,cli)</em></li>
@@ -875,7 +896,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Add API reference landing page <em>(api)</em></li>
 <li>Align API reference with public re-export facades <em>(api)</em></li>
 </ul>
-<h3 id="fixed_5">Fixed</h3>
+<h3 id="fixed_6">Fixed</h3>
 <ul>
 <li>Resolve modulation alias layouts from arc, not model identity <em>(celldesigner.writer)</em></li>
 <li>Exclude compartments from tidy's label-fit step <em>(celldesigner.utils)</em></li>
@@ -884,7 +905,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Mark _MultiMixin._make_subunit_shape as abstractmethod <em>(sbgn)</em></li>
 <li>Resolve relative @import against stylesheet directory; remove os.chdir hack <em>(styling)</em></li>
 </ul>
-<h3 id="miscellaneous_1">Miscellaneous</h3>
+<h3 id="miscellaneous_2">Miscellaneous</h3>
 <ul>
 <li>Remove speculative # TO DO markers <em>(builder)</em></li>
 <li>Remove resolved TODO comments on Reactant.base and Product.base <em>(celldesigner)</em></li>
@@ -898,7 +919,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Align species default sizes and colors with CellDesigner conventions <em>(celldesigner.layout)</em></li>
 </ul>
 <h2 id="0104-2026-04-23">[0.10.4] - 2026-04-23</h2>
-<h3 id="added_3">Added</h3>
+<h3 id="added_4">Added</h3>
 <ul>
 <li>Expose per-source-id annotations and notes on ReaderResult <em>(io)</em></li>
 </ul>
@@ -918,7 +939,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Fix table rendering in sbgn pd/af and celldesigner module docstrings</li>
 <li>Fix and expand CLI reference, index, and about pages</li>
 </ul>
-<h3 id="fixed_6">Fixed</h3>
+<h3 id="fixed_7">Fixed</h3>
 <ul>
 <li>Add missing type annotations to resolve griffe warnings <em>(typing)</em></li>
 </ul>
@@ -947,7 +968,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Rename format-specific Reading/WritingContext subclasses <em>(io)</em></li>
 </ul>
 <h2 id="0100-2026-04-22">[0.10.0] - 2026-04-22</h2>
-<h3 id="added_4">Added</h3>
+<h3 id="added_5">Added</h3>
 <ul>
 <li>Write RDF annotations in CellDesigner writer <em>(celldesigner.io)</em></li>
 <li>Add package facade with re-exports <em>(celldesigner)</em></li>
@@ -1014,7 +1035,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Replace commented-out example with runnable one <em>(plugins.core)</em></li>
 <li>Mark CellDesigner as read/write <em>(readme)</em></li>
 </ul>
-<h3 id="fixed_7">Fixed</h3>
+<h3 id="fixed_8">Fixed</h3>
 <ul>
 <li>Read source files as UTF-8 in super discipline test <em>(tests)</em></li>
 <li>Harden coordinate frames against degenerate geometry <em>(celldesigner.io)</em></li>
@@ -1028,7 +1049,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Stop swallowing exceptions in super_or_builder <em>(builder)</em></li>
 <li>Drop duplicate LineTo in _TruncatedProteinShape <em>(celldesigner)</em></li>
 </ul>
-<h3 id="miscellaneous_2">Miscellaneous</h3>
+<h3 id="miscellaneous_3">Miscellaneous</h3>
 <ul>
 <li>Remove unused imports in pd/af layouts and models <em>(sbgn)</em></li>
 <li>Extend default style to new compartment layouts <em>(celldesigner.utils)</em></li>
@@ -1053,7 +1074,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Class RDFAnnotation plain dataclass, sbo_term as str <em>(sbml core)</em></li>
 </ul>
 <h2 id="090-2026-04-20">[0.9.0] - 2026-04-20</h2>
-<h3 id="added_5">Added</h3>
+<h3 id="added_6">Added</h3>
 <ul>
 <li>Add descendants() to Model and ModelElement <em>(core)</em></li>
 </ul>
@@ -1067,7 +1088,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Added codebase specification</li>
 </ul>
-<h3 id="fixed_8">Fixed</h3>
+<h3 id="fixed_9">Fixed</h3>
 <ul>
 <li>Populate source_id_to_model_element for models that aren't ModelElements <em>(io)</em></li>
 <li>Repair is_submodel in SBGNAFModel and CellDesignerModel <em>(model)</em></li>
@@ -1078,12 +1099,12 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Fix broken matrix() transform output <em>(rendering svg_native)</em></li>
 <li>Return None for source_id_to_model/layout_element when not requested <em>(io)</em></li>
 </ul>
-<h3 id="miscellaneous_3">Miscellaneous</h3>
+<h3 id="miscellaneous_4">Miscellaneous</h3>
 <ul>
 <li>Remove animating module</li>
 </ul>
 <h2 id="081-2026-04-16">[0.8.1] - 2026-04-16</h2>
-<h3 id="added_6">Added</h3>
+<h3 id="added_7">Added</h3>
 <ul>
 <li>Change --tidy to -t, add --to-top-left to export and visualize <em>(cli)</em></li>
 <li>Snap arc endpoints to closest anchor point when tidying <em>(celldesigner utils)</em></li>
@@ -1093,12 +1114,12 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Replace set_arcs_to_orthogonal with straighten_arcs <em>(celldesigner utils)</em></li>
 </ul>
-<h3 id="fixed_9">Fixed</h3>
+<h3 id="fixed_10">Fixed</h3>
 <ul>
 <li>Initialize logic_arc before layout block in logic gate reader <em>(celldesigner io)</em></li>
 </ul>
 <h2 id="080-2026-04-16">[0.8.0] - 2026-04-16</h2>
-<h3 id="added_7">Added</h3>
+<h3 id="added_8">Added</h3>
 <ul>
 <li>Add colors subcommand to list named colors <em>(cli)</em></li>
 <li>Add style subcommand and list styles <em>(cli)</em></li>
@@ -1138,7 +1159,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Update ID assignment patterns for CellDesigner</li>
 <li>Add ID assignment patterns to CLAUDE.md</li>
 </ul>
-<h3 id="fixed_10">Fixed</h3>
+<h3 id="fixed_11">Fixed</h3>
 <ul>
 <li>Handle missing notes on complex subunit species <em>(celldesigner io)</em></li>
 <li>Catch all exceptions in pickle check_file methods <em>(io)</em></li>
@@ -1174,7 +1195,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Added roundtrip tests <em>(celldesigner io)</em></li>
 </ul>
 <h2 id="070-2026-04-13">[0.7.0] - 2026-04-13</h2>
-<h3 id="added_8">Added</h3>
+<h3 id="added_9">Added</h3>
 <ul>
 <li>Add get_stylable_attributes utility function <em>(styling)</em></li>
 <li>Read line width and color from CellDesigner XML <em>(celldesigner io)</em></li>
@@ -1208,7 +1229,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Improved for map vs map builder <em>(sbgn)</em></li>
 <li>Simplified the top example <em>(<span class="momapy-brand"><span class="momapy-brand-moma">Moma</span><span class="momapy-brand-py">Py</span></span>)</em></li>
 </ul>
-<h3 id="fixed_11">Fixed</h3>
+<h3 id="fixed_12">Fixed</h3>
 <ul>
 <li>Use correct coordinate frame bases in writer inverse transforms <em>(celldesigner io)</em></li>
 <li>Derive reaction link participants from layout arcs <em>(celldesigner io)</em></li>
@@ -1231,7 +1252,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Fixed expansion of reactions and modulations in layout model mapping <em>(celldesigner io)</em></li>
 <li>Fixed bug when reading with no return type <em>(celldesigner io)</em></li>
 </ul>
-<h3 id="miscellaneous_4">Miscellaneous</h3>
+<h3 id="miscellaneous_5">Miscellaneous</h3>
 <ul>
 <li>Exclude .venv-sandbox from build <em>(gitignore)</em></li>
 <li>Add full-word variable naming convention to CLAUDE.md</li>
@@ -1246,7 +1267,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Add layout_model_mapping integrity tests for SBGN and CellDesigner <em>(io)</em></li>
 </ul>
 <h2 id="061-2026-03-18">[0.6.1] - 2026-03-18</h2>
-<h3 id="added_9">Added</h3>
+<h3 id="added_10">Added</h3>
 <ul>
 <li>Added a demo on map comparison</li>
 <li>Added colinear case when reading reactions <em>(celldesigner)</em></li>
@@ -1267,7 +1288,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Moved demo to new paths and name</li>
 </ul>
-<h3 id="fixed_12">Fixed</h3>
+<h3 id="fixed_13">Fixed</h3>
 <ul>
 <li>Replaced with correct apt deps <em>(binder)</em></li>
 <li>Removed escaping brackets <em>(binder)</em></li>
@@ -1278,7 +1299,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Updated the demo with latest refactors <em>(demo)</em></li>
 <li>Fixed bug in coordinates of logic gate arcs <em>(celldesigner)</em></li>
 </ul>
-<h3 id="miscellaneous_5">Miscellaneous</h3>
+<h3 id="miscellaneous_6">Miscellaneous</h3>
 <ul>
 <li>Updated reactome analysis with maps display <em>(demos)</em></li>
 <li>Updated reactome analysis <em>(demos)</em></li>
@@ -1294,7 +1315,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Fixed new paths <em>(demo)</em></li>
 </ul>
 <h2 id="060-2026-03-10">[0.6.0] - 2026-03-10</h2>
-<h3 id="added_10">Added</h3>
+<h3 id="added_11">Added</h3>
 <ul>
 <li>Added cache for font queries <em>(fonts)</em></li>
 <li>Added a helper function for creating a bbox around points and refactored to use it</li>
@@ -1309,11 +1330,11 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Replaced Bezier approximations with direct elliptical arc calculations <em>(geometry)</em></li>
 <li>Removed unnecessary helper functions <em>(geometry)</em></li>
 </ul>
-<h3 id="fixed_13">Fixed</h3>
+<h3 id="fixed_14">Fixed</h3>
 <ul>
 <li>Set modifications to own_angle rather than angle <em>(celldesigner)</em></li>
 </ul>
-<h3 id="miscellaneous_6">Miscellaneous</h3>
+<h3 id="miscellaneous_7">Miscellaneous</h3>
 <ul>
 <li>Added support for python 3.13 and 3.14</li>
 <li>Added TODO.txt to .gitignore</li>
@@ -1324,7 +1345,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Added tests for union of bbox and making bbox around points</li>
 </ul>
 <h2 id="050-2026-03-04">[0.5.0] - 2026-03-04</h2>
-<h3 id="added_11">Added</h3>
+<h3 id="added_12">Added</h3>
 <ul>
 <li>Added optional dict cache to replace</li>
 <li>Added singleton mapping for anchor layout element <em>(layout model mapping)</em></li>
@@ -1348,13 +1369,13 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Complete refactor, separated parsing/model/layout <em>(sbgnml)</em></li>
 <li>Made subpackage and divided into modules <em>(core)</em></li>
 </ul>
-<h3 id="fixed_14">Fixed</h3>
+<h3 id="fixed_15">Fixed</h3>
 <ul>
 <li>Active borders are now layout elements (fix #3)</li>
 <li>Absence of modification is now treated as a modification with state='empty' <em>(celldesigner)</em></li>
 <li>Now hashable <em>(builder)</em></li>
 </ul>
-<h3 id="miscellaneous_7">Miscellaneous</h3>
+<h3 id="miscellaneous_8">Miscellaneous</h3>
 <ul>
 <li>Added instructions for debates/ and plans/ directories</li>
 <li>Added debates/</li>
@@ -1369,7 +1390,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Added tests for sbgn.utils</li>
 </ul>
 <h2 id="044-2026-02-24">[0.4.4] - 2026-02-24</h2>
-<h3 id="added_12">Added</h3>
+<h3 id="added_13">Added</h3>
 <ul>
 <li>Added tidy option <em>(cli)</em></li>
 <li>Changed default font to Arial for macos and win and deja vu sans for linux</li>
@@ -1381,7 +1402,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Changed regex for version; made release conditional to testing; made docs independant of release</li>
 </ul>
-<h3 id="fixed_15">Fixed</h3>
+<h3 id="fixed_16">Fixed</h3>
 <ul>
 <li>Fixed label position for compartments; fixed rerouting equivalence arcs <em>(tidy)</em></li>
 <li>Activity is now a dataclass</li>
@@ -1392,7 +1413,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Bug in fraction for Arc</li>
 <li>Accepts tag with no orientation</li>
 </ul>
-<h3 id="miscellaneous_8">Miscellaneous</h3>
+<h3 id="miscellaneous_9">Miscellaneous</h3>
 <ul>
 <li>Added AGENTS.md for code agents</li>
 <li>Cleaned useless function <em>(sbgn.io.sbgnml)</em></li>
@@ -1407,11 +1428,11 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Removed linenums for code snippets</li>
 <li>Update example with new io and render_map api</li>
 </ul>
-<h3 id="fixed_16">Fixed</h3>
+<h3 id="fixed_17">Fixed</h3>
 <ul>
 <li>Changed stoichiometry type from int to float</li>
 </ul>
-<h3 id="miscellaneous_9">Miscellaneous</h3>
+<h3 id="miscellaneous_10">Miscellaneous</h3>
 <ul>
 <li>Uv sync</li>
 <li>Removed tracking of site/</li>
@@ -1422,12 +1443,12 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Changed order of sections</li>
 <li>Added symlink to CHANGELOG.md from root to docs/</li>
 </ul>
-<h3 id="fixed_17">Fixed</h3>
+<h3 id="fixed_18">Fixed</h3>
 <ul>
 <li>Bug in point to fortranarray and in handling shapely polygons</li>
 <li>Bug in invert of scaling</li>
 </ul>
-<h3 id="miscellaneous_10">Miscellaneous</h3>
+<h3 id="miscellaneous_11">Miscellaneous</h3>
 <ul>
 <li>Added coverage files</li>
 </ul>
@@ -1442,7 +1463,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Added docs for cli and styling</li>
 </ul>
 <h2 id="040-2026-02-10">[0.4.0] - 2026-02-10</h2>
-<h3 id="added_13">Added</h3>
+<h3 id="added_14">Added</h3>
 <ul>
 <li>Added precommit linting (@conventional)</li>
 <li>Added renderer and format autodetection <em>(rendering)</em></li>
@@ -1451,11 +1472,11 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <ul>
 <li>Added automated changelog with git-cliff</li>
 </ul>
-<h3 id="fixed_18">Fixed</h3>
+<h3 id="fixed_19">Fixed</h3>
 <ul>
 <li>Distinguish scenario min and all for rendering images</li>
 </ul>
-<h3 id="miscellaneous_11">Miscellaneous</h3>
+<h3 id="miscellaneous_12">Miscellaneous</h3>
 <ul>
 <li>Removed old testing file</li>
 <li>Docs/plans-&gt;plans</li>
@@ -1491,7 +1512,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Changed 'formats' attributes to 'supported_formats'; added ValueError for unsupported formats</li>
 </ul>
 <h2 id="028-2026-01-27">[0.2.8] - 2026-01-27</h2>
-<h3 id="fixed_19">Fixed</h3>
+<h3 id="fixed_20">Fixed</h3>
 <ul>
 <li>Fixed python version to 3.13 for packaging</li>
 </ul>
@@ -1564,7 +1585,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Made true release conditional to TestPyPi release's success</li>
 </ul>
 <h2 id="020-2026-01-06">[0.2.0] - 2026-01-06</h2>
-<h3 id="fixed_20">Fixed</h3>
+<h3 id="fixed_21">Fixed</h3>
 <ul>
 <li>Fixed bug in checking files: added try in case the file is binary</li>
 <li>Fixed bug where super was called in FrozenSurjectionDict init</li>
@@ -1651,7 +1672,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Updated packages</li>
 </ul>
 <h2 id="013-2025-08-28">[0.1.3] - 2025-08-28</h2>
-<h3 id="fixed_21">Fixed</h3>
+<h3 id="fixed_22">Fixed</h3>
 <ul>
 <li>Fixed link to doc</li>
 </ul>
@@ -1686,7 +1707,7 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
 <li>Refactored code and fixed in set_arcs_to_borders; added tidy function</li>
 <li>Refactored rendering; render multiple maps</li>
 </ul>
-<h3 id="fixed_22">Fixed</h3>
+<h3 id="fixed_23">Fixed</h3>
 <ul>
 <li>Fixed typo</li>
 <li>Fixed merge</li>
@@ -2897,6 +2918,12 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
+        <a href="#added"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added');">
+            Added
+        </a>
+        
         <a href="#cicd"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#cicd');">
@@ -2907,6 +2934,18 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
             data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#documentation');">
             Documentation
+        </a>
+        
+        <a href="#fixed"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed');">
+            Fixed
+        </a>
+        
+        <a href="#miscellaneous"
+            class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous');">
+            Miscellaneous
         </a>
         
         <a href="#other"
@@ -2931,9 +2970,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed"
+        <a href="#fixed_1"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_1');">
             Fixed
         </a>
         
@@ -2953,9 +2992,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added"
+        <a href="#added_1"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_1');">
             Added
         </a>
         
@@ -2971,15 +3010,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_1"
+        <a href="#fixed_2"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_1');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_2');">
             Fixed
         </a>
         
-        <a href="#miscellaneous"
+        <a href="#miscellaneous_1"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_1');">
             Miscellaneous
         </a>
         
@@ -2999,9 +3038,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_1"
+        <a href="#added_2"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_1');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_2');">
             Added
         </a>
         
@@ -3017,9 +3056,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_2"
+        <a href="#fixed_3"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_2');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_3');">
             Fixed
         </a>
         
@@ -3045,9 +3084,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed_3"
+        <a href="#fixed_4"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_3');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_4');">
             Fixed
         </a>
         
@@ -3073,9 +3112,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed_4"
+        <a href="#fixed_5"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_4');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_5');">
             Fixed
         </a>
         
@@ -3089,9 +3128,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_2"
+        <a href="#added_3"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_2');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_3');">
             Added
         </a>
         
@@ -3107,15 +3146,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_5"
+        <a href="#fixed_6"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_5');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_6');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_1"
+        <a href="#miscellaneous_2"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_1');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_2');">
             Miscellaneous
         </a>
         
@@ -3141,9 +3180,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_3"
+        <a href="#added_4"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_3');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_4');">
             Added
         </a>
         
@@ -3175,9 +3214,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_6"
+        <a href="#fixed_7"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_6');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_7');">
             Fixed
         </a>
         
@@ -3235,9 +3274,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_4"
+        <a href="#added_5"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_4');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_5');">
             Added
         </a>
         
@@ -3253,15 +3292,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_7"
+        <a href="#fixed_8"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_7');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_8');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_2"
+        <a href="#miscellaneous_3"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_2');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_3');">
             Miscellaneous
         </a>
         
@@ -3303,9 +3342,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_5"
+        <a href="#added_6"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_5');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_6');">
             Added
         </a>
         
@@ -3321,15 +3360,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_8"
+        <a href="#fixed_9"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_8');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_9');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_3"
+        <a href="#miscellaneous_4"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_3');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_4');">
             Miscellaneous
         </a>
         
@@ -3343,9 +3382,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_6"
+        <a href="#added_7"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_6');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_7');">
             Added
         </a>
         
@@ -3355,9 +3394,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed_9"
+        <a href="#fixed_10"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_9');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_10');">
             Fixed
         </a>
         
@@ -3371,9 +3410,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_7"
+        <a href="#added_8"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_7');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_8');">
             Added
         </a>
         
@@ -3389,9 +3428,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_10"
+        <a href="#fixed_11"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_10');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_11');">
             Fixed
         </a>
         
@@ -3411,9 +3450,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_8"
+        <a href="#added_9"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_8');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_9');">
             Added
         </a>
         
@@ -3429,15 +3468,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_11"
+        <a href="#fixed_12"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_11');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_12');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_4"
+        <a href="#miscellaneous_5"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_4');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_5');">
             Miscellaneous
         </a>
         
@@ -3457,9 +3496,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_9"
+        <a href="#added_10"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_9');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_10');">
             Added
         </a>
         
@@ -3481,15 +3520,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_12"
+        <a href="#fixed_13"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_12');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_13');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_5"
+        <a href="#miscellaneous_6"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_5');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_6');">
             Miscellaneous
         </a>
         
@@ -3509,9 +3548,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_10"
+        <a href="#added_11"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_10');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_11');">
             Added
         </a>
         
@@ -3521,15 +3560,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed_13"
+        <a href="#fixed_14"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_13');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_14');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_6"
+        <a href="#miscellaneous_7"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_6');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_7');">
             Miscellaneous
         </a>
         
@@ -3549,9 +3588,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_11"
+        <a href="#added_12"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_11');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_12');">
             Added
         </a>
         
@@ -3567,15 +3606,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed_14"
+        <a href="#fixed_15"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_14');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_15');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_7"
+        <a href="#miscellaneous_8"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_7');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_8');">
             Miscellaneous
         </a>
         
@@ -3595,9 +3634,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_12"
+        <a href="#added_13"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_12');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_13');">
             Added
         </a>
         
@@ -3607,15 +3646,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             CI/CD
         </a>
         
-        <a href="#fixed_15"
+        <a href="#fixed_16"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_15');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_16');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_8"
+        <a href="#miscellaneous_9"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_8');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_9');">
             Miscellaneous
         </a>
         
@@ -3641,15 +3680,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_16"
+        <a href="#fixed_17"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_16');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_17');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_9"
+        <a href="#miscellaneous_10"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_9');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_10');">
             Miscellaneous
         </a>
         
@@ -3669,15 +3708,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Documentation
         </a>
         
-        <a href="#fixed_17"
+        <a href="#fixed_18"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_17');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_18');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_10"
+        <a href="#miscellaneous_11"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_10');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_11');">
             Miscellaneous
         </a>
         
@@ -3713,9 +3752,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#added_13"
+        <a href="#added_14"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_13');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#added_14');">
             Added
         </a>
         
@@ -3725,15 +3764,15 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             CI/CD
         </a>
         
-        <a href="#fixed_18"
+        <a href="#fixed_19"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_18');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_19');">
             Fixed
         </a>
         
-        <a href="#miscellaneous_11"
+        <a href="#miscellaneous_12"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_11');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#miscellaneous_12');">
             Miscellaneous
         </a>
         
@@ -3781,9 +3820,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#fixed_19"
+        <a href="#fixed_20"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_19');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_20');">
             Fixed
         </a>
         
@@ -3921,9 +3960,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#fixed_20"
+        <a href="#fixed_21"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_20');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_21');">
             Fixed
         </a>
         
@@ -3943,9 +3982,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
         </a>
         
         
-        <a href="#fixed_21"
+        <a href="#fixed_22"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_21');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_22');">
             Fixed
         </a>
         
@@ -3997,9 +4036,9 @@ and this project adheres to <a href="https://www.conventionalcommits.org/">Conve
             Changed
         </a>
         
-        <a href="#fixed_22"
+        <a href="#fixed_23"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_22');">
+            data-active="false" data-depth="3" onClick="deferSetActiveTocLink('#fixed_23');">
             Fixed
         </a>
         

@@ -523,14 +523,11 @@ Adrien Rougny, Marek Ostaszewski, Venkata Satagopam. <cite>momapy: a Python libr
 <li>Open a pull request against <code>main</code>.</li>
 </ol>
 <p>All commits must follow <a href="https://www.conventionalcommits.org/">Conventional Commits</a> (enforced via commitlint). See <code>CLAUDE.md</code> for the list of valid types and examples.</p>
-<h2 id="versioning-and-deprecation-policy">Versioning and deprecation policy</h2>
+<h2 id="versioning">Versioning</h2>
 <p><span class="momapy-brand"><span class="momapy-brand-moma">Moma</span><span class="momapy-brand-py">Py</span></span> loosely follows <a href="https://semver.org/">semantic versioning</a> as a
 guideline, not a strict contract.</p>
 <p>Below <code>1.0</code> the public API is not stable and may change in a breaking way in any
 release.</p>
-<p>From <code>1.0</code> onward, breaking changes are introduced gradually where practical: a
-deprecated API keeps working and emits a <code>DeprecationWarning</code> for at least one
-release before removal, naming a replacement when one exists.</p>
 <p>The public API is what the documentation and each subpackage's <code>__all__</code>
 describe. Underscore-prefixed names are not public and may change at any time.</p>
 <h2 id="license">License</h2>
@@ -737,10 +734,10 @@ describe. Underscore-prefixed names are not public and may change at any time.</
         
 
         
-        <a href="#versioning-and-deprecation-policy"
+        <a href="#versioning"
             class="text-muted-foreground hover:text-foreground data-[active=true]:text-foreground text-[0.8rem] no-underline transition-colors data-[depth=3]:pl-4 data-[depth=4]:pl-6"
-            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#versioning-and-deprecation-policy');">
-            Versioning and deprecation policy
+            data-active="false" data-depth="2" onClick="deferSetActiveTocLink('#versioning');">
+            Versioning
         </a>
         
 
