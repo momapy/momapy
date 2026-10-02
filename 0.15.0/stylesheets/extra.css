@@ -1,0 +1,671 @@
+@font-face {
+  font-family: "Montserrat";
+  src: url("../assets/fonts/Montserrat-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../assets/fonts/IBMPlexMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Monospaced font of the whole site (code blocks, inline code, signatures). */
+:root {
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* MomaPy brand, injected around every prose mention by mkdocs_extensions/brand.py,
+   in the Moma blue of the header logo. */
+.momapy-brand {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #1C3B56;
+}
+
+/* The Moma blue is too close to the dark background: set the word on a white
+   chip, in the background color. */
+.dark .momapy-brand {
+  background-color: white;
+  border-radius: 0.25em;
+  padding: 0.05em 0.3em;
+  color: var(--background);
+}
+
+/* The header logo is the favicon SVG inlined by the theme, whose white fill
+   vanishes on the light background: draw it in the Moma blue in light mode.
+   !important is needed to beat the inline style of the SVG path. */
+html:not(.dark) header a[data-slot="button"] > .size-8 > svg path {
+  fill: #1C3B56 !important;
+}
+
+/* Drop the header separators around the buttons of the top right corner. */
+header [data-slot="separator"] {
+  display: none;
+}
+
+/* Drop the layout toggle (shown on wide screens): the layout stays fixed, see
+   docs/javascripts/layout.js. */
+header button[onclick^="toggleLayout"] {
+  display: none;
+}
+
+/* Deep blue dark mode instead of the shadcn theme's neutral black.
+   Layered surfaces share the hue and step up in lightness to keep their contrast. */
+.dark {
+  --background: #102539; /* oklch(25.8% 0.047 249) */
+  --card: oklch(31% 0.047 249);
+  --sidebar: oklch(31% 0.047 249);
+  --surface: oklch(31% 0.047 249);
+  --code-highlight: oklch(37% 0.045 249);
+  --popover: oklch(37% 0.045 249);
+  --secondary: oklch(37% 0.045 249);
+  --muted: oklch(37% 0.045 249);
+  --sidebar-accent: oklch(37% 0.045 249);
+  --accent: oklch(45% 0.045 249);
+}
+
+/* Solid sidebar border instead of the theme's fade-out gradient.
+   height: auto lets top/bottom size it, so it no longer overflows the sidebar. */
+[data-slot="sidebar"] > .w-px {
+  background-image: none;
+  background-color: var(--border);
+  height: auto;
+}
+
+/* Drop the fade overlay at the top of the sidebar, which blurs over the first
+   menu item (Home). */
+[data-slot="sidebar"] > .top-8 {
+  display: none;
+}
+
+/* Code frames, shared by the notebook cells and the fenced code blocks: an outer
+   frame holding a header (title and copy button), a code panel and, for a
+   command with its output, a darker output panel. Syntax palette: GitHub light
+   and dark. */
+:root {
+  --code-frame: var(--muted);
+  --code-panel: var(--background);
+  --code-output: color-mix(in oklab, var(--muted) 96%, var(--foreground));
+  --code-header-height: 2.25rem;
+  --syntax-keyword: #cf222e;
+  --syntax-string: #0a3069;
+  --syntax-number: #0550ae;
+  --syntax-name: #8250df;
+  --syntax-comment: #59636e;
+  --syntax-error: #82071e;
+  /* more hues of the same palette, for the API reference symbol chips */
+  --syntax-attribute: #953800;
+  --syntax-module: #116329;
+  --syntax-parameter: #bf3989;
+}
+
+.dark {
+  --code-frame: var(--card);
+  --code-panel: color-mix(in oklab, var(--card), var(--muted));
+  --code-output: color-mix(in oklab, var(--card), var(--background));
+  --syntax-keyword: #ff7b72;
+  --syntax-string: #a5d6ff;
+  --syntax-number: #79c0ff;
+  --syntax-name: #d2a8ff;
+  --syntax-comment: #9da7b3;
+  --syntax-error: #ffa198;
+  --syntax-attribute: #ffa657;
+  --syntax-module: #7ee787;
+  --syntax-parameter: #f778ba;
+}
+
+/* Fenced code blocks, framed by mkdocs_extensions/code_frames.py. */
+article .code-frame {
+  margin-block: 1rem;
+  padding: 0 0.375rem 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--code-frame);
+}
+
+/* Header text, shared with the notebook cells' prompt so both headers look the
+   same (the page text around a fenced block would otherwise leak into it). */
+article .code-frame-header,
+html .jupyter-wrapper .jp-Notebook .jp-CodeCell .jp-InputPrompt {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--muted-foreground);
+}
+
+/* the copy button's 5px side padding is taken off the right inset, mirroring
+   the title's */
+article .code-frame-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--code-header-height);
+  padding-inline: 0.625rem calc(0.625rem - 5px);
+  line-height: var(--code-header-height);
+}
+
+/* The theme draws every article button as a filled primary button: reset it to
+   a bare icon, like the notebook cells' copy button. The theme's rules weigh
+   (0,2,2), (0,3,2) when hovered: these selectors match that weight, and win as
+   this stylesheet comes later. */
+article .code-frame-header button.code-frame-copy,
+article .code-frame-header button.code-frame-copy:hover,
+article .code-frame-header button.code-frame-copy:active {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  translate: none;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+article .code-frame-header button.code-frame-copy:hover {
+  color: var(--foreground);
+}
+
+/* beats the theme's 16px sizing of button icons, (0,2,3) */
+article .code-frame-header button.code-frame-copy svg.code-frame-copy-icon {
+  width: 15px;
+  height: 15px;
+}
+
+/* after a copy, code_frames.js unhides the "Copied!" notice for a second, in
+   place of the icon */
+article .code-frame-copied:not([hidden]) {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 15px;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+article .code-frame-copied:not([hidden]) ~ .code-frame-copy-icon {
+  display: none;
+}
+
+article :is(.code-frame-panel, .code-frame-output) {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+article .code-frame-panel {
+  background-color: var(--code-panel);
+}
+
+article .code-frame-output {
+  margin-top: 0.375rem;
+  background-color: var(--code-output);
+}
+
+/* API reference cards (classes, functions, methods, ...): the theme fills them
+   with its gray slate and brownish stone palettes, which clash with the site's
+   colors. Use the site tokens instead, with a border so nested cards stay
+   apart. The selectors match the theme's (0,2,1) and, for functions, (0,3,1). */
+:root {
+  --doc-object: var(--background);
+}
+
+.dark {
+  --doc-object: color-mix(in oklab, var(--background), var(--card));
+}
+
+article .doc .doc-object,
+article .doc .doc-object.doc-function {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--doc-object);
+}
+
+/* API reference symbol chips (mod, class, func, meth, attr, ...), in the
+   headings and the table of contents. The theme colors them from its blue
+   chart ramp, set on the <body> (.theme-default): func and meth get its darkest
+   blue, unreadable on the dark background. Use the syntax palette instead, so a
+   function chip matches a function name in the code; the tokens follow the
+   dark mode by themselves. */
+.theme-default {
+  --doc-symbol-module-fg-color: var(--syntax-module);
+  --doc-symbol-class-fg-color: var(--syntax-number);
+  --doc-symbol-type_alias-fg-color: var(--syntax-number);
+  --doc-symbol-function-fg-color: var(--syntax-name);
+  --doc-symbol-method-fg-color: var(--syntax-name);
+  --doc-symbol-attribute-fg-color: var(--syntax-attribute);
+  --doc-symbol-parameter-fg-color: var(--syntax-parameter);
+  --doc-symbol-type_parameter-fg-color: var(--syntax-parameter);
+}
+
+/* a tint of the chip's own color, (0,1,2) beating mkdocstrings' per-kind
+   backgrounds, which are tuned for its own palette */
+body code.doc-symbol {
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* A softer border than the theme's full color, and one size for every heading
+   chip: the theme only sizes the chips of child objects (.doc-children), so
+   the module chip of the page root grew to its heading's size, taller than the
+   heading line. (0,3,2) beats the theme's (0,3,1). */
+article .doc .doc-heading code.doc-symbol {
+  padding-block: 0;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+/* API reference signatures: a bare code panel, without frame nor header. */
+article .doc-signature {
+  margin-block: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--code-panel);
+}
+
+article :is(.code-frame, .doc-signature) pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  border-radius: 0;
+  background: transparent;
+}
+
+article :is(.code-frame, .doc-signature) code {
+  color: var(--foreground);
+}
+
+article :is(.code-frame, .doc-signature) :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .o, .ow) {
+  color: var(--syntax-keyword);
+}
+
+article :is(.code-frame, .doc-signature) :is(.s, .s1, .s2, .sa, .sb, .sc, .sd, .se, .sh, .si, .sr, .ss, .sx, .dl) {
+  color: var(--syntax-string);
+}
+
+article :is(.code-frame, .doc-signature) :is(.m, .mb, .mf, .mh, .mi, .mo, .il, .nb, .bp, .nv) {
+  color: var(--syntax-number);
+}
+
+article :is(.code-frame, .doc-signature) :is(.nt, .nf, .nc, .nd, .fm) {
+  color: var(--syntax-name);
+}
+
+article :is(.code-frame, .doc-signature) :is(.c, .c1, .ch, .cm, .cp, .cpf, .cs) {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+
+article :is(.code-frame, .doc-signature) .err {
+  color: var(--syntax-error);
+}
+
+/* API reference source code: mkdocs_extensions/code_frames.py frames the code
+   inside the "Source code in ..." accordion, below its summary. */
+article details.mkdocstrings-source > .code-frame {
+  margin-block: 0.75rem 0.25rem;
+}
+
+/* The source is a Pygments table (line numbers, code): drop the theme's table
+   look (margin, row borders, hover, cell padding) so it reads as a plain code
+   panel. The first selector matches the (0,4,2) of the theme's docstring table
+   margin. */
+article .doc .doc-contents .code-frame table.highlighttable,
+article .code-frame table.highlighttable {
+  margin: 0;
+  width: 100%;
+}
+
+article .code-frame table.highlighttable tr,
+article .code-frame table.highlighttable tr:hover {
+  border: 0;
+  background-color: transparent;
+}
+
+article .code-frame table.highlighttable tbody tr td {
+  padding: 0;
+  vertical-align: top;
+}
+
+/* Only the code scrolls horizontally, the line numbers stay in place: the
+   table is laid out as a flex row, where the code cell can shrink below its
+   content's width (min-width: 0) and its <pre> scrolls, instead of the whole
+   table scrolling in the theme's .table-wrapper. */
+article .code-frame .table-wrapper {
+  overflow: visible;
+}
+
+article .code-frame table.highlighttable,
+article .code-frame table.highlighttable tbody {
+  display: block;
+}
+
+article .code-frame table.highlighttable tr {
+  display: flex;
+}
+
+article .code-frame table.highlighttable td.linenos {
+  flex: none;
+  user-select: none;
+}
+
+article .code-frame table.highlighttable td.code {
+  flex: 1;
+  min-width: 0;
+}
+
+/* no max height: the two columns would scroll apart */
+article .code-frame table.highlighttable pre {
+  max-height: none;
+}
+
+/* the gap between the columns belongs to the line numbers, so it does not
+   scroll away with the code */
+article .code-frame table.highlighttable td.linenos pre {
+  padding-right: 1.25rem;
+  overflow: visible;
+  text-align: right;
+}
+
+article .code-frame table.highlighttable td.linenos a {
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+/* the theme zeroes the line height of td.code pre, meant for codehilite */
+article .code-frame table.highlighttable td.code pre {
+  padding-left: 0;
+  line-height: inherit;
+}
+
+/* Code sections keep the browser's default scrollbars: no scrollbar rule here,
+   docs/javascripts/scrollbars.js exempts them from the theme's. */
+
+/* Notebook pages (mkdocs-jupyter). The plugin ships the JupyterLab light theme,
+   which ignores the site's dark mode: point its variables at the site tokens so
+   cells follow the theme. The html prefix beats the plugin's .jupyter-wrapper
+   rules, which are inlined after this stylesheet. */
+html .jupyter-wrapper {
+  --jp-code-font-family: var(--font-mono);
+  --jp-code-font-family-default: var(--font-mono);
+  --jp-content-font-color0: var(--foreground);
+  --jp-content-font-color1: var(--foreground);
+  --jp-content-font-color2: var(--muted-foreground);
+  --jp-content-font-color3: var(--muted-foreground);
+  --jp-ui-font-color0: var(--foreground);
+  --jp-ui-font-color1: var(--foreground);
+  --jp-ui-font-color2: var(--muted-foreground);
+  --jp-ui-font-color3: var(--muted-foreground);
+  --jp-layout-color0: var(--background);
+  --jp-layout-color1: var(--background);
+  --jp-layout-color2: var(--muted);
+  --jp-layout-color3: var(--accent);
+  --jp-border-color0: var(--border);
+  --jp-border-color1: var(--border);
+  --jp-border-color2: var(--border);
+  --jp-cell-editor-background: var(--code-panel);
+  --jp-cell-editor-border-color: var(--border);
+  --jp-cell-prompt-not-active-font-color: var(--muted-foreground);
+  --jp-cell-prompt-not-active-opacity: 1;
+  --jp-cell-inprompt-font-color: var(--muted-foreground);
+  --jp-cell-outprompt-font-color: var(--muted-foreground);
+  --jp-rendermime-table-row-background: var(--muted);
+  --jp-rendermime-table-row-hover-background: var(--accent);
+  --jp-mirror-editor-variable-color: var(--foreground);
+  --jp-mirror-editor-punctuation-color: var(--foreground);
+  --jp-mirror-editor-keyword-color: var(--syntax-keyword);
+  --jp-mirror-editor-operator-color: var(--syntax-keyword);
+  --jp-mirror-editor-string-color: var(--syntax-string);
+  --jp-mirror-editor-number-color: var(--syntax-number);
+  --jp-mirror-editor-comment-color: var(--syntax-comment);
+  --jp-mirror-editor-error-color: var(--syntax-error);
+  /* link, error and ANSI palettes: GitHub light */
+  --jp-content-link-color: #0969da;
+  --jp-rendermime-error-background: #ffebe9;
+  --ansi-black: #24292f;
+  --ansi-red: #cf222e;
+  --ansi-green: #116329;
+  --ansi-yellow: #7d4e00;
+  --ansi-blue: #0969da;
+  --ansi-magenta: #8250df;
+  --ansi-cyan: #1b7c83;
+  --ansi-white: #6e7781;
+}
+
+/* link, error and ANSI palettes: GitHub dark */
+.dark .jupyter-wrapper {
+  --jp-content-link-color: #58a6ff;
+  --jp-rendermime-error-background: rgb(248 81 73 / 0.15);
+  --ansi-black: #8b949e;
+  --ansi-red: #ff7b72;
+  --ansi-green: #3fb950;
+  --ansi-yellow: #d29922;
+  --ansi-blue: #58a6ff;
+  --ansi-magenta: #bc8cff;
+  --ansi-cyan: #39c5cf;
+  --ansi-white: #b1bac4;
+}
+
+/* Code cells as titled code blocks: the prompt ("In [1]:") becomes the header
+   of a rounded frame holding an inset code panel and, below it, a darker
+   output panel; the copy button sits at the right of the header. Markdown cells
+   already hide their prompt, so the frame spans the full width, aligned with
+   the prose. A cell with outputs is nested in a second, bare .jp-CodeCell: the
+   frame goes on the cell holding the input, the bare wrapper gets no padding. */
+html .jupyter-wrapper .jp-CodeCell:has(> .jp-CodeCell) {
+  padding: 0;
+}
+
+html .jupyter-wrapper .jp-CodeCell:has(> .jp-Cell-inputWrapper) {
+  margin-block: 1rem;
+  padding: 0 0.375rem 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--code-frame);
+}
+
+html .jupyter-wrapper .jp-CodeCell .jp-InputArea {
+  position: relative;
+  flex-direction: column;
+}
+
+html .jupyter-wrapper .jp-Notebook .jp-CodeCell .jp-InputPrompt {
+  flex: none;
+  padding: 0 0.625rem;
+  line-height: var(--code-header-height);
+  text-align: left;
+  /* the plugin's move cursor is for dragging cells in JupyterLab */
+  cursor: default;
+}
+
+/* position: static on the editor and CodeMirror, so the copy button is placed
+   against the frame, in the header. */
+html .jupyter-wrapper .jp-CodeCell .jp-InputArea-editor {
+  position: static;
+  width: auto;
+  border-radius: var(--radius-lg);
+}
+
+html .jupyter-wrapper .jp-CodeCell .CodeMirror {
+  position: static;
+  background: transparent;
+}
+
+html .jupyter-wrapper .jp-CodeCell .jp-InputArea-editor pre {
+  margin: 0;
+  padding: 1rem 1.25rem;
+}
+
+/* The copy button spans the header height and centers its content, so the
+   icon and the "Copied!" notice line up with the prompt; its 5px side padding
+   is taken off the offset, mirroring the prompt's inset. */
+html .jupyter-wrapper .zeroclipboard-container {
+  top: 0;
+  right: calc(0.625rem - 5px);
+  display: flex;
+  align-items: center;
+  height: var(--code-header-height);
+}
+
+html .jupyter-wrapper .zeroclipboard-container clipboard-copy,
+html .jupyter-wrapper .zeroclipboard-container clipboard-copy > div {
+  display: flex;
+  align-items: center;
+}
+
+html .jupyter-wrapper .zeroclipboard-container clipboard-copy {
+  padding: 0 5px;
+}
+
+/* the SVG keeps its height="20" attribute: size it square */
+html .jupyter-wrapper .zeroclipboard-container .clipboard-copy-icon {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  color: var(--muted-foreground);
+}
+
+html .jupyter-wrapper .zeroclipboard-container clipboard-copy:hover .clipboard-copy-icon {
+  color: var(--foreground);
+}
+
+/* After a copy, the plugin unhides the "Copied!" notice for a second: show it
+   in place of the icon rather than next to it. */
+html .jupyter-wrapper .zeroclipboard-container .notice:not([hidden]) {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 15px;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+html .jupyter-wrapper .zeroclipboard-container .notice:not([hidden]) ~ .clipboard-copy-icon {
+  display: none;
+}
+
+/* Output panel, below the code panel in the same frame: no prompt column,
+   except an "Out[n]:" label above execution results. */
+html .jupyter-wrapper .jp-Notebook .jp-CodeCell .jp-Cell-outputWrapper {
+  margin-top: 0.375rem;
+}
+
+html .jupyter-wrapper .jp-CodeCell .jp-Cell-outputArea {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--code-output);
+}
+
+html .jupyter-wrapper .jp-OutputArea-child {
+  flex-direction: column;
+}
+
+html .jupyter-wrapper .jp-OutputArea-prompt {
+  display: none;
+}
+
+html .jupyter-wrapper .jp-OutputArea-child:has(> .jp-OutputArea-executeResult) > .jp-OutputArea-prompt {
+  display: block;
+  flex: none;
+  margin-bottom: 0.5rem;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.25rem;
+  text-align: left;
+}
+
+html .jupyter-wrapper .jp-CodeCell .jp-OutputArea-child > .jp-OutputArea-output {
+  padding: 0;
+}
+
+/* Keep output lines whole, scrolling horizontally when too wide, instead of
+   the plugin's wrapping anywhere. */
+html .jupyter-wrapper .jp-CodeCell .jp-OutputArea-output pre {
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* IBM Plex Mono ships in regular weight only: drop the bold of keywords and
+   operators rather than let the browser synthesize it. */
+html .highlight-ipynb :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .o, .ow) {
+  font-weight: inherit;
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-black-fg {
+  color: var(--ansi-black);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-red-fg {
+  color: var(--ansi-red);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-green-fg {
+  color: var(--ansi-green);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-yellow-fg {
+  color: var(--ansi-yellow);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-blue-fg {
+  color: var(--ansi-blue);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-magenta-fg {
+  color: var(--ansi-magenta);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-cyan-fg {
+  color: var(--ansi-cyan);
+}
+
+html .jupyter-wrapper .jp-RenderedText pre .ansi-white-fg {
+  color: var(--ansi-white);
+}
+
+/* Rendered maps are drawn for a white page (black strokes, often no background
+   of their own): set them on a white card in dark mode. */
+.dark .jupyter-wrapper .jp-RenderedSVG img {
+  background-color: white;
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+}
+
+/* Reference of the "How to cite" section of the About page: a card like the
+   code frames, with the paper title (a <cite>, left unbranded by
+   mkdocs_extensions/brand.py) set upright and bold instead of italic. */
+article .citation {
+  margin-block: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--code-frame);
+  line-height: 1.7;
+}
+
+article .citation cite {
+  font-style: normal;
+  font-weight: 600;
+}
+
+article .citation a {
+  overflow-wrap: anywhere;
+}

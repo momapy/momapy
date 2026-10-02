@@ -1,0 +1,151 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.2">
+  <map language="process description">
+    <extension>
+      <renderInformation 
+        xmlns="http://www.sbml.org/sbml/level3/version1/render/version1" id="renderInformation" program-name="sbgnviz" program-version="6.1.0" background-color="#00000000">
+        <listOfColorDefinitions>
+          <colorDefinition id="color_1" value="#ffffffff"/>
+          <colorDefinition id="color_2" value="#555555"/>
+          <colorDefinition id="color_3" value="#ffffff"/>
+        </listOfColorDefinitions>
+        <listOfBackgroundImages/>
+        <listOfStyles>
+          <style id="nodeffffff5555551.2511normalnormalHelvetica00011" idList="g1 g2 g3 nwtN_b173a9a9_6b7a_4cde_8ace_65722584a339 nwtN_4d9cabdb-2529-bdcc-d47c-35aa0a91d0fb">
+            <g font-size="11" font-family="Helvetica" font-weight="normal" font-style="normal" font-color="#000" stroke="color_2" stroke-width="1.25" fill="color_1" background-image-opacity="1" background-opacity="1"/>
+          </style>
+          <style id="infoboxffffff55555519normalnormalArial0f0f0fstadium" idList="nwtSV_715e51f2_d276_4b44_bfef_c82110f09c7f nwtSV_e70903e4_ecdd_47ee_9405_08bc77568ca0 nwtSV_bd8a9916_79a1_454a_a51f_b4438757c153">
+            <g font-size="9" font-family="Arial" font-weight="normal" font-style="normal" font-color="#0f0f0f" stroke="color_2" stroke-width="1" fill="color_3"/>
+          </style>
+          <style id="nodeffffff5555551.2511" idList="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88">
+            <g stroke="color_2" stroke-width="1.25" fill="color_1" background-image-opacity="1" background-opacity="1"/>
+          </style>
+          <style id="edge5555551.25" idList="nwtE_9004c638_ecea_4d91_9c0d_f74523e1945e nwtE_efa2d2fd_ebad_4f06_a65a_44c653a950d9 nwtE_8ef177c3_eac9_4116_8928_41b81df74afe nwtE_0791111e_e791_4509_ae56_ed022bf8c67a nwtE_6f050655_22f3_4e97_920f_d7e5d20994c7">
+            <g stroke="color_2" stroke-width="1.25"/>
+          </style>
+        </listOfStyles>
+      </renderInformation>
+      <nwt:mapProperties 
+        xmlns:nwt="https://newteditor.org/">
+        <compoundPadding>0</compoundPadding>
+        <extraCompartmentPadding>14</extraCompartmentPadding>
+        <extraComplexPadding>10</extraComplexPadding>
+        <arrowScale>1.25</arrowScale>
+        <showComplexName>true</showComplexName>
+        <dynamicLabelSize>regular</dynamicLabelSize>
+        <inferNestingOnLoad>false</inferNestingOnLoad>
+        <fitLabelsToNodes>false</fitLabelsToNodes>
+        <fitLabelsToInfoboxes>false</fitLabelsToInfoboxes>
+        <recalculateLayoutOnComplexityManagement>true</recalculateLayoutOnComplexityManagement>
+        <rearrangeOnComplexityManagement>true</rearrangeOnComplexityManagement>
+        <animateOnDrawingChanges>true</animateOnDrawingChanges>
+        <adjustNodeLabelFontSizeAutomatically>false</adjustNodeLabelFontSizeAutomatically>
+        <epnMatchingPercentage>100</epnMatchingPercentage>
+        <processIncomingContribution>33</processIncomingContribution>
+        <processOutgoingContribution>33</processOutgoingContribution>
+        <processAgentContribution>33</processAgentContribution>
+        <overallProcessPercentage>100</overallProcessPercentage>
+        <complexMatchPercentage>100</complexMatchPercentage>
+        <allowSimpleChemicalCloning>false</allowSimpleChemicalCloning>
+        <simpleChemicalCloningThreshold>3</simpleChemicalCloningThreshold>
+        <enablePorts>true</enablePorts>
+        <enableEntityStateSynchronization>false</enableEntityStateSynchronization>
+        <enableSIFTopologyGrouping>false</enableSIFTopologyGrouping>
+        <allowCompoundNodeResize>true</allowCompoundNodeResize>
+        <mapColorScheme>black_white</mapColorScheme>
+        <mapColorSchemeStyle>solid</mapColorSchemeStyle>
+        <mapName>Pathway #sbgn-network-container-0</mapName>
+        <mapDescription/>
+        <highlightColor>#0B9BCD</highlightColor>
+        <extraHighlightThickness>2</extraHighlightThickness>
+        <mapPD2AFConverted>false</mapPD2AFConverted>
+      </nwt:mapProperties>
+      <nwt:annotationLayers 
+        xmlns:nwt="https://newteditor.org/">
+        <layerCount>0</layerCount>
+        <layers>[]</layers>
+      </nwt:annotationLayers>
+    </extension>
+    <glyph id="g1" class="macromolecule">
+      <label text="MEK"/>
+      <bbox x="120" y="-65" w="60" h="30"/>
+      <glyph id="nwtSV_715e51f2_d276_4b44_bfef_c82110f09c7f" class="state variable">
+        <extension>
+          <visible>true</visible>
+        </extension>
+        <state value="P"/>
+        <bbox x="122.25" y="-71" w="12" h="12"/>
+      </glyph>
+    </glyph>
+    <glyph id="g2" class="macromolecule">
+      <label text="ERK"/>
+      <bbox x="40" y="-5" w="60" h="30"/>
+      <glyph id="nwtSV_e70903e4_ecdd_47ee_9405_08bc77568ca0" class="state variable">
+        <extension>
+          <visible>true</visible>
+        </extension>
+        <state value=""/>
+        <bbox x="42.25" y="-11" w="12" h="12"/>
+      </glyph>
+    </glyph>
+    <glyph id="g3" class="macromolecule">
+      <label text="ERK"/>
+      <bbox x="200" y="-5" w="60" h="30"/>
+      <glyph id="nwtSV_bd8a9916_79a1_454a_a51f_b4438757c153" class="state variable">
+        <extension>
+          <visible>true</visible>
+        </extension>
+        <state value="P"/>
+        <bbox x="202.25" y="-11" w="12" h="12"/>
+      </glyph>
+    </glyph>
+    <glyph id="nwtN_b173a9a9_6b7a_4cde_8ace_65722584a339" class="simple chemical">
+      <label text="ATP"/>
+      <bbox x="95" y="35" w="30" h="30"/>
+    </glyph>
+    <glyph id="nwtN_4d9cabdb-2529-bdcc-d47c-35aa0a91d0fb" class="simple chemical">
+      <label text="ADP"/>
+      <bbox x="175" y="35" w="30" h="30"/>
+    </glyph>
+    <glyph id="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88" class="process">
+      <bbox x="142.85714285714286" y="2.8571428571428568" w="14.285714285714286" h="14.285714285714286"/>
+      <port id="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88.1" x="140" y="10"/>
+      <port id="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88.2" x="160" y="10"/>
+    </glyph>
+    <arc id="nwtE_9004c638_ecea_4d91_9c0d_f74523e1945e" class="consumption" source="g2" target="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88.1">
+      <extension>
+        <curveStyle>bezier</curveStyle>
+      </extension>
+      <start x="100.625" y="10"/>
+      <end x="139.375" y="10"/>
+    </arc>
+    <arc id="nwtE_efa2d2fd_ebad_4f06_a65a_44c653a950d9" class="consumption" source="nwtN_b173a9a9_6b7a_4cde_8ace_65722584a339" target="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88.1">
+      <extension>
+        <curveStyle>bezier</curveStyle>
+      </extension>
+      <start x="121.04854345603981" y="38.95145654396019"/>
+      <end x="139.375" y="10"/>
+    </arc>
+    <arc id="nwtE_8ef177c3_eac9_4116_8928_41b81df74afe" class="production" source="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88.2" target="g3">
+      <extension>
+        <curveStyle>bezier</curveStyle>
+      </extension>
+      <start x="160.625" y="10"/>
+      <end x="196.25" y="10"/>
+    </arc>
+    <arc id="nwtE_0791111e_e791_4509_ae56_ed022bf8c67a" class="production" source="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88.2" target="nwtN_4d9cabdb-2529-bdcc-d47c-35aa0a91d0fb">
+      <extension>
+        <curveStyle>bezier</curveStyle>
+      </extension>
+      <start x="160.625" y="10"/>
+      <end x="176.74174785275224" y="36.741747852752226"/>
+    </arc>
+    <arc id="nwtE_6f050655_22f3_4e97_920f_d7e5d20994c7" class="catalysis" source="g1" target="nwtN_156bb187_3da2_4518_a673_fdddcc98ca88">
+      <extension>
+        <curveStyle>bezier</curveStyle>
+      </extension>
+      <start x="150" y="-34.375"/>
+      <end x="150" y="-0.7142857142857224"/>
+    </arc>
+  </map>
+</sbgn>
