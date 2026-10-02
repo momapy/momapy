@@ -9,6 +9,7 @@ from momapy.core.layout import DoubleHeadedArc
 from momapy.core.layout import Node
 from momapy.core.layout import SingleHeadedArc
 from momapy.io._utils import make_unique_xml_id
+from momapy.sbgn.pd import CardinalityLayout
 from momapy.sbgn.pd import ConsumptionLayout
 from momapy.sbgn.pd import EmptySetLayout
 from momapy.sbgn.pd import EntityPool
@@ -442,6 +443,29 @@ def make_sbgnml_glyph(
     return sbgnml_glyph
 
 
+def make_sbgnml_stoichiometry_glyph(
+    writing_context: "WritingContext",
+    cardinality_layout: CardinalityLayout,
+) -> lxml.etree._Element:
+    """Create a ``<glyph class="stoichiometry">`` element.
+
+    Args:
+        writing_context: The current writing context.
+        cardinality_layout: The cardinality layout to serialize.
+
+    Returns:
+        The lxml stoichiometry ``<glyph>`` element.
+    """
+    sbgnml_id = get_xml_id(writing_context, cardinality_layout)
+    sbgnml_glyph = make_lxml_element(
+        "glyph", attributes={"id": sbgnml_id, "class": "stoichiometry"}
+    )
+    sbgnml_glyph.append(make_sbgnml_bbox_from_node(cardinality_layout))
+    if cardinality_layout.label is not None:
+        sbgnml_glyph.append(make_sbgnml_label(cardinality_layout.label))
+    return sbgnml_glyph
+
+
 def make_sbgnml_arc_element(
     writing_context: "WritingContext",
     arc_layout: "LayoutElement",
@@ -478,6 +502,11 @@ def make_sbgnml_arc_element(
     sbgnml_points = make_sbgnml_points(points)
     for sbgnml_point in sbgnml_points:
         sbgnml_arc.append(sbgnml_point)
+    for child_layout in arc_layout.layout_elements:
+        if isinstance(child_layout, CardinalityLayout):
+            sbgnml_arc.append(
+                make_sbgnml_stoichiometry_glyph(writing_context, child_layout)
+            )
     return sbgnml_arc
 
 

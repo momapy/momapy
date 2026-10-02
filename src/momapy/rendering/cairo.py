@@ -35,14 +35,21 @@ from momapy.drawing import DrawingElement
 from momapy.drawing import Ellipse
 from momapy.drawing import EllipticalArc as EllipticalArcDrawing
 from momapy.drawing import FontStyle
+from momapy.drawing import Gradient
+from momapy.drawing import GradientUnits
 from momapy.drawing import Group
+from momapy.drawing import LineCap
+from momapy.drawing import LineJoin
 from momapy.drawing import LineTo
+from momapy.drawing import LinearGradient
 from momapy.drawing import MoveTo
 from momapy.drawing import NoneValue
 from momapy.drawing import Path
 from momapy.drawing import QuadraticCurveTo
 from momapy.drawing import Rectangle
+from momapy.drawing import SpreadMethod
 from momapy.drawing import Text
+from momapy.geometry import Bbox
 from momapy.geometry import EllipticalArc as EllipticalArcGeometry
 from momapy.geometry import MatrixTransformation
 from momapy.geometry import Point
@@ -50,6 +57,7 @@ from momapy.geometry import Rotation
 from momapy.geometry import Scaling
 from momapy.geometry import Transformation
 from momapy.geometry import Translation
+from momapy.rendering.core import make_gradient_matrix
 from momapy.rendering.core import StatefulRenderer
 from momapy.rendering.core import SupportsFileOutput
 from momapy.utils import check_parent_dir_exists
@@ -115,6 +123,21 @@ class CairoRenderer(
         Rotation: "_add_rotation",
         Scaling: "_add_scaling",
         MatrixTransformation: "_add_matrix_transformation",
+    }
+    _gr_spread_method_extend_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
+        SpreadMethod.PAD: cairo.EXTEND_PAD,
+        SpreadMethod.REFLECT: cairo.EXTEND_REFLECT,
+        SpreadMethod.REPEAT: cairo.EXTEND_REPEAT,
+    }
+    _de_stroke_linecap_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
+        LineCap.BUTT: cairo.LINE_CAP_BUTT,
+        LineCap.ROUND: cairo.LINE_CAP_ROUND,
+        LineCap.SQUARE: cairo.LINE_CAP_SQUARE,
+    }
+    _de_stroke_linejoin_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
+        LineJoin.MITER: cairo.LINE_JOIN_MITER,
+        LineJoin.ROUND: cairo.LINE_JOIN_ROUND,
+        LineJoin.BEVEL: cairo.LINE_JOIN_BEVEL,
     }
     _te_font_style_slant_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
         FontStyle.NORMAL: gi.repository.Pango.Style.NORMAL,
@@ -267,7 +290,7 @@ class CairoRenderer(
         self.context.restore()
         self.context.new_path()
 
-    def _make_stroke_paint(self) -> bool:
+    def _make_stroke_paint(self, drawing_element: DrawingElement) -> bool:
         stroke = self.get_current_value("stroke")
         stroke_width = self.get_current_value("stroke_width")
         stroke_dasharray = self.get_current_value("stroke_dasharray")
@@ -275,7 +298,17 @@ class CairoRenderer(
 
         if stroke is not NoneValue:
             self.context.set_line_width(stroke_width)
-            self.context.set_source_rgba(*stroke.to_rgba(rgba_range=(0.0, 1.0)))
+            self.context.set_line_cap(
+                self._de_stroke_linecap_mapping[
+                    self.get_current_value("stroke_linecap")
+                ]
+            )
+            self.context.set_line_join(
+                self._de_stroke_linejoin_mapping[
+                    self.get_current_value("stroke_linejoin")
+                ]
+            )
+            self._set_context_source(stroke, drawing_element)
             if stroke_dasharray is not None and stroke_dasharray is not NoneValue:
                 self.context.set_dash(stroke_dasharray, stroke_dashoffset or 0)
             else:
@@ -283,15 +316,64 @@ class CairoRenderer(
             return True
         return False
 
-    def _make_fill_paint(self) -> bool:
+    def _make_fill_paint(self, drawing_element: DrawingElement) -> bool:
         fill = self.get_current_value("fill")
         if fill is not NoneValue:
-            self.context.set_source_rgba(*fill.to_rgba(rgba_range=(0.0, 1.0)))
+            self._set_context_source(fill, drawing_element)
             return True
         return False
 
-    def _stroke_and_fill(self) -> None:
-        has_fill = self._make_fill_paint()
+    def _set_context_source(
+        self, paint: typing.Any, drawing_element: DrawingElement
+    ) -> None:
+        class_ = type(paint)
+        if issubclass(class_, Builder):
+            class_ = class_._cls_to_build
+        if issubclass(class_, Gradient):
+            bbox = drawing_element.bbox()
+            if paint.gradient_units == GradientUnits.OBJECT_BOUNDING_BOX and (
+                bbox.width == 0 or bbox.height == 0
+            ):
+                self.context.set_source_rgba(0.0, 0.0, 0.0, 0.0)
+            else:
+                self.context.set_source(self._make_gradient_source(paint, bbox))
+        else:
+            self.context.set_source_rgba(*paint.to_rgba(rgba_range=(0.0, 1.0)))
+
+    def _make_gradient_source(self, gradient: Gradient, bbox: Bbox) -> typing.Any:
+        class_ = type(gradient)
+        if issubclass(class_, Builder):
+            class_ = class_._cls_to_build
+        if issubclass(class_, LinearGradient):
+            source = cairo.LinearGradient(
+                gradient.x1, gradient.y1, gradient.x2, gradient.y2
+            )
+        else:
+            focal_x = gradient.fx if gradient.fx is not None else gradient.cx
+            focal_y = gradient.fy if gradient.fy is not None else gradient.cy
+            source = cairo.RadialGradient(
+                focal_x, focal_y, gradient.fr, gradient.cx, gradient.cy, gradient.r
+            )
+        for stop in gradient.stops:
+            source.add_color_stop_rgba(
+                stop.offset, *stop.stop_color.to_rgba(rgba_range=(0.0, 1.0))
+            )
+        source.set_extend(self._gr_spread_method_extend_mapping[gradient.spread_method])
+        matrix = make_gradient_matrix(gradient, bbox)
+        cairo_matrix = cairo.Matrix(
+            xx=matrix[0][0],
+            yx=matrix[1][0],
+            xy=matrix[0][1],
+            yy=matrix[1][1],
+            x0=matrix[0][2],
+            y0=matrix[1][2],
+        )
+        cairo_matrix.invert()
+        source.set_matrix(cairo_matrix)
+        return source
+
+    def _stroke_and_fill(self, drawing_element: DrawingElement) -> None:
+        has_fill = self._make_fill_paint(drawing_element)
         has_stroke = self.get_current_value("stroke") is not NoneValue
 
         if has_fill:
@@ -301,7 +383,7 @@ class CairoRenderer(
                 self.context.fill()
 
         if has_stroke:
-            self._make_stroke_paint()
+            self._make_stroke_paint(drawing_element)
             self.context.stroke()
 
     def _add_transform_from_drawing_element(
@@ -335,7 +417,7 @@ class CairoRenderer(
     def _render_path(self, path: Path) -> None:
         for action in path.actions:
             self._add_path_action_to_context(action)
-        self._stroke_and_fill()
+        self._stroke_and_fill(path)
 
     def _render_text(self, text: Text) -> None:
         pango_layout = gi.repository.PangoCairo.create_layout(self.context)
@@ -371,10 +453,11 @@ class CairoRenderer(
         pango_layout_iter = pango_layout.get_iter()
         baseline = pango_layout_iter.get_baseline()
         y_offset = gi.repository.Pango.units_to_double(baseline)
-        self.context.translate(text.x - x_offset, text.y - y_offset)
-        if self._make_fill_paint():
+        if self._make_fill_paint(text):
+            self.context.move_to(text.x - x_offset, text.y - y_offset)
             gi.repository.PangoCairo.show_layout(self.context, pango_layout)
-        if self._make_stroke_paint():
+        if self._make_stroke_paint(text):
+            self.context.move_to(text.x - x_offset, text.y - y_offset)
             gi.repository.PangoCairo.layout_path(self.context, pango_layout)
             self.context.stroke()
 
@@ -385,7 +468,7 @@ class CairoRenderer(
         self.context.arc(0, 0, 1, 0, 2 * math.pi)
         self.context.close_path()
         self.context.restore()
-        self._stroke_and_fill()
+        self._stroke_and_fill(ellipse)
 
     def _render_rectangle(self, rectangle: Rectangle) -> None:
         path = rectangle.to_path()

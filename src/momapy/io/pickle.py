@@ -25,6 +25,8 @@ from momapy.io.core import Writer
 from momapy.io.core import WriterResult
 from momapy.utils import check_parent_dir_exists
 
+_PICKLE_PROTOCOL_HEADER = b"\x80"
+
 
 def _filter_mapping_by_classes(
     mapping: collections.abc.Mapping,
@@ -77,20 +79,24 @@ class PickleReader(Reader):
 
     @classmethod
     def check_file(cls, file_path: str | os.PathLike) -> bool:
-        """Return `True` if the file contains a valid pickle stream.
+        r"""Return `True` if the file starts with a pickle protocol header.
+
+        Only the first byte is read and the file is never unpickled, so
+        auto-detection cannot execute code from the file. The `PROTO` opcode
+        `b"\x80"` is the first byte of every pickle protocol since protocol 2,
+        including the Python default protocol used by `PickleWriter`. Protocols
+        0 and 1 do not carry it and are therefore not auto-detected; reading
+        them still works through an explicit `reader="pickle"`.
 
         Args:
             file_path: Path of the file to check.
 
         Returns:
-            `True` if the file can be unpickled, `False` otherwise.
+            `True` if the file starts with the pickle protocol header.
         """
         with open(file_path, "rb") as f:
-            try:
-                pickle.load(f)
-            except Exception:
-                return False
-            return True
+            header = f.read(1)
+        return header == _PICKLE_PROTOCOL_HEADER
 
     @classmethod
     def read(
@@ -130,11 +136,17 @@ class PickleReader(Reader):
             The unpickled `ReaderResult`, projected per the flags.
 
         Raises:
-            ValueError: If `return_type` is incompatible with the pickled
-                object's shape (e.g. a bare `Model` requested as a `"map"`).
+            ValueError: If the file does not contain a `ReaderResult`, or if
+                `return_type` is incompatible with the pickled object's shape
+                (e.g. a bare `Model` requested as a `"map"`).
         """
         with open(file_path, "rb") as f:
             reader_result = pickle.load(f)
+        if not isinstance(reader_result, ReaderResult):
+            raise ValueError(
+                "pickle file does not contain a momapy ReaderResult: "
+                f"{type(reader_result).__name__}"
+            )
         if not with_annotations:
             reader_result.element_to_annotations = None
         if not with_notes:

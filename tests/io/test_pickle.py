@@ -1,5 +1,7 @@
 """Tests for momapy.io.pickle round-tripping of maps and bare objects."""
 
+import pickle
+
 import frozendict
 import pytest
 
@@ -8,6 +10,17 @@ import momapy.geometry
 import momapy.io.pickle
 import momapy.sbgn.pd
 import momapy.sbml.model
+
+_UNPICKLE_SIDE_EFFECTS = []
+
+
+def _record_unpickle_side_effect():
+    _UNPICKLE_SIDE_EFFECTS.append(1)
+
+
+class _UnpickleProbe:
+    def __reduce__(self):
+        return (_record_unpickle_side_effect, ())
 
 
 def _write(obj, tmp_path):
@@ -198,3 +211,28 @@ class TestPickleAnnotationFiltering:
         result = momapy.io.pickle.PickleReader.read(file_path, return_type="layout")
         assert not result.element_to_annotations
         assert not result.element_to_notes
+
+
+class TestPickleReaderSafety:
+    """Detection reads only the header, and the payload is validated."""
+
+    def test_check_file_does_not_unpickle(self, tmp_path):
+        """check_file accepts a pickle without executing it."""
+        _UNPICKLE_SIDE_EFFECTS.clear()
+        file_path = tmp_path / "probe.pkl"
+        file_path.write_bytes(pickle.dumps(_UnpickleProbe()))
+        assert momapy.io.pickle.PickleReader.check_file(file_path) is True
+        assert _UNPICKLE_SIDE_EFFECTS == []
+
+    def test_check_file_rejects_non_pickle(self, tmp_path):
+        """A file without the protocol header is rejected."""
+        file_path = tmp_path / "not_pickle.txt"
+        file_path.write_text("hello")
+        assert momapy.io.pickle.PickleReader.check_file(file_path) is False
+
+    def test_read_rejects_non_reader_result(self, tmp_path):
+        """A pickle that is not a ReaderResult raises ValueError."""
+        file_path = tmp_path / "obj.pkl"
+        file_path.write_bytes(pickle.dumps({"a": 1}))
+        with pytest.raises(ValueError):
+            momapy.io.pickle.PickleReader.read(file_path)

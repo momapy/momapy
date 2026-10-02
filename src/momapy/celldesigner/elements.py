@@ -19,6 +19,7 @@ from momapy.builder import (
 from momapy.coloring import Color, black
 from momapy.core.elements import ModelElement
 from momapy.core.layout import DoubleHeadedArc, SingleHeadedArc
+from momapy.drawing import Gradient
 from momapy.drawing import DrawingElement, NoneValue, NoneValueType
 from momapy.sbgn.elements import SBGNNode, _MultiMixin, _SBGNMixin, _SimpleMixin
 
@@ -41,10 +42,10 @@ class CellDesignerNode(SBGNNode):
 class CellDesignerSingleHeadedArc(SingleHeadedArc):
     """Abstract base class for CellDesigner single-headed arcs."""
 
-    arrowhead_stroke: NoneValueType | Color | None = black
+    arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     arrowhead_stroke_width: float | None = 1.0
-    path_fill: NoneValueType | Color | None = NoneValue
-    path_stroke: NoneValueType | Color | None = black
+    path_fill: NoneValueType | Color | Gradient | None = NoneValue
+    path_stroke: NoneValueType | Color | Gradient | None = black
     path_stroke_width: float | None = 1.0
 
     def own_drawing_elements(self) -> list[DrawingElement]:
@@ -68,8 +69,8 @@ class CellDesignerSingleHeadedArc(SingleHeadedArc):
 class CellDesignerDoubleHeadedArc(DoubleHeadedArc):
     """Abstract base class for CellDesigner double-headed arcs."""
 
-    path_fill: NoneValueType | Color | None = NoneValue
-    path_stroke: NoneValueType | Color | None = black
+    path_fill: NoneValueType | Color | Gradient | None = NoneValue
+    path_stroke: NoneValueType | Color | Gradient | None = black
     path_stroke_width: float | None = 1.0
 
     def own_drawing_elements(self) -> list[DrawingElement]:

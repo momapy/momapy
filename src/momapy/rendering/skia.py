@@ -29,14 +29,20 @@ from momapy.drawing import FilterEffectInput
 from momapy.drawing import FloodEffect
 from momapy.drawing import FontStyle
 from momapy.drawing import GaussianBlurEffect
+from momapy.drawing import Gradient
+from momapy.drawing import GradientUnits
 from momapy.drawing import Group
+from momapy.drawing import LineCap
+from momapy.drawing import LineJoin
 from momapy.drawing import LineTo
+from momapy.drawing import LinearGradient
 from momapy.drawing import MoveTo
 from momapy.drawing import NoneValue
 from momapy.drawing import OffsetEffect
 from momapy.drawing import Path
 from momapy.drawing import QuadraticCurveTo
 from momapy.drawing import Rectangle
+from momapy.drawing import SpreadMethod
 from momapy.drawing import Text
 from momapy.geometry import Bbox
 from momapy.geometry import MatrixTransformation
@@ -45,6 +51,7 @@ from momapy.geometry import Rotation
 from momapy.geometry import Scaling
 from momapy.geometry import Transformation
 from momapy.geometry import Translation
+from momapy.rendering.core import make_gradient_matrix
 from momapy.rendering.core import StatefulRenderer
 from momapy.rendering.core import SupportsFileOutput
 from momapy.utils import check_parent_dir_exists
@@ -138,6 +145,23 @@ class SkiaRenderer(
         EdgeMode.WRAP: skia.TileMode.kMirror,
         EdgeMode.DUPLICATE: skia.TileMode.kClamp,
         NoneValue: skia.TileMode.kDecal,
+    }
+    _gr_spread_method_tilemode_mapping: typing.ClassVar[
+        dict[typing.Any, typing.Any]
+    ] = {
+        SpreadMethod.PAD: skia.TileMode.kClamp,
+        SpreadMethod.REFLECT: skia.TileMode.kMirror,
+        SpreadMethod.REPEAT: skia.TileMode.kRepeat,
+    }
+    _de_stroke_linecap_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
+        LineCap.BUTT: skia.Paint.kButt_Cap,
+        LineCap.ROUND: skia.Paint.kRound_Cap,
+        LineCap.SQUARE: skia.Paint.kSquare_Cap,
+    }
+    _de_stroke_linejoin_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
+        LineJoin.MITER: skia.Paint.kMiter_Join,
+        LineJoin.ROUND: skia.Paint.kRound_Join,
+        LineJoin.BEVEL: skia.Paint.kBevel_Join,
     }
     _te_font_style_slant_mapping: typing.ClassVar[dict[typing.Any, typing.Any]] = {
         FontStyle.NORMAL: skia.FontStyle.Slant.kUpright_Slant,
@@ -326,7 +350,7 @@ class SkiaRenderer(
         """
         self.canvas.restore()
 
-    def _make_stroke_paint(self) -> typing.Any:
+    def _make_stroke_paint(self, drawing_element: DrawingElement) -> typing.Any:
         if self.get_current_value("stroke_dasharray") is not NoneValue:
             skia_path_effect = skia.DashPathEffect.Make(
                 list(self.get_current_value("stroke_dasharray")),
@@ -336,24 +360,96 @@ class SkiaRenderer(
             skia_path_effect = None
         skia_paint = skia.Paint(
             AntiAlias=True,
-            Color4f=skia.Color4f(
-                self.get_current_value("stroke").to_rgba(rgba_range=(0.0, 1.0))
-            ),
             StrokeWidth=self.get_current_value("stroke_width"),
+            StrokeCap=self._de_stroke_linecap_mapping[
+                self.get_current_value("stroke_linecap")
+            ],
+            StrokeJoin=self._de_stroke_linejoin_mapping[
+                self.get_current_value("stroke_linejoin")
+            ],
             PathEffect=skia_path_effect,
             Style=skia.Paint.kStroke_Style,
         )
-        return skia_paint
-
-    def _make_fill_paint(self) -> typing.Any:
-        skia_paint = skia.Paint(
-            AntiAlias=True,
-            Color4f=skia.Color4f(
-                self.get_current_value("fill").to_rgba(rgba_range=(0.0, 1.0))
-            ),
-            Style=skia.Paint.kFill_Style,
+        self._set_skia_paint_source(
+            skia_paint, self.get_current_value("stroke"), drawing_element
         )
         return skia_paint
+
+    def _make_fill_paint(self, drawing_element: DrawingElement) -> typing.Any:
+        skia_paint = skia.Paint(
+            AntiAlias=True,
+            Style=skia.Paint.kFill_Style,
+        )
+        self._set_skia_paint_source(
+            skia_paint, self.get_current_value("fill"), drawing_element
+        )
+        return skia_paint
+
+    def _set_skia_paint_source(
+        self,
+        skia_paint: typing.Any,
+        paint: typing.Any,
+        drawing_element: DrawingElement,
+    ) -> None:
+        class_ = type(paint)
+        if issubclass(class_, Builder):
+            class_ = class_._cls_to_build
+        if issubclass(class_, Gradient):
+            bbox = drawing_element.bbox()
+            if paint.gradient_units == GradientUnits.OBJECT_BOUNDING_BOX and (
+                bbox.width == 0 or bbox.height == 0
+            ):
+                skia_paint.setColor4f(skia.Color4f(0.0, 0.0, 0.0, 0.0))
+            else:
+                skia_paint.setShader(self._make_gradient_shader(paint, bbox))
+        else:
+            skia_paint.setColor4f(skia.Color4f(paint.to_rgba(rgba_range=(0.0, 1.0))))
+
+    def _make_gradient_shader(self, gradient: Gradient, bbox: Bbox) -> typing.Any:
+        matrix = make_gradient_matrix(gradient, bbox)
+        skia_matrix = skia.Matrix.MakeAll(
+            matrix[0][0],
+            matrix[0][1],
+            matrix[0][2],
+            matrix[1][0],
+            matrix[1][1],
+            matrix[1][2],
+            0.0,
+            0.0,
+            1.0,
+        )
+        colors = [
+            skia.Color4f(stop.stop_color.to_rgba(rgba_range=(0.0, 1.0))).toColor()
+            for stop in gradient.stops
+        ]
+        positions = [stop.offset for stop in gradient.stops]
+        tile_mode = self._gr_spread_method_tilemode_mapping[gradient.spread_method]
+        class_ = type(gradient)
+        if issubclass(class_, Builder):
+            class_ = class_._cls_to_build
+        if issubclass(class_, LinearGradient):
+            return skia.GradientShader.MakeLinear(
+                points=[
+                    skia.Point(gradient.x1, gradient.y1),
+                    skia.Point(gradient.x2, gradient.y2),
+                ],
+                colors=colors,
+                positions=positions,
+                mode=tile_mode,
+                localMatrix=skia_matrix,
+            )
+        focal_x = gradient.fx if gradient.fx is not None else gradient.cx
+        focal_y = gradient.fy if gradient.fy is not None else gradient.cy
+        return skia.GradientShader.MakeTwoPointConical(
+            start=skia.Point(focal_x, focal_y),
+            startRadius=gradient.fr,
+            end=skia.Point(gradient.cx, gradient.cy),
+            endRadius=gradient.r,
+            colors=colors,
+            positions=positions,
+            mode=tile_mode,
+            localMatrix=skia_matrix,
+        )
 
     def _make_filter_paint(self, filter_: Filter, filter_region: Bbox) -> typing.Any:
         dskia_filters = {}
@@ -542,10 +638,10 @@ class SkiaRenderer(
     def _render_path(self, path: Path) -> None:
         skia_path = self._make_skia_path(path)
         if self.get_current_value("fill") is not NoneValue:
-            skia_paint = self._make_fill_paint()
+            skia_paint = self._make_fill_paint(path)
             self.canvas.drawPath(path=skia_path, paint=skia_paint)
         if self.get_current_value("stroke") is not NoneValue:
-            skia_paint = self._make_stroke_paint()
+            skia_paint = self._make_stroke_paint(path)
             self.canvas.drawPath(path=skia_path, paint=skia_paint)
 
     def _render_text(self, text: Text) -> None:
@@ -588,7 +684,7 @@ class SkiaRenderer(
                 )
             ] = skia_font
         if self.get_current_value("fill") is not NoneValue:
-            skia_paint = self._make_fill_paint()
+            skia_paint = self._make_fill_paint(text)
             self.canvas.drawString(
                 text=text.text,
                 x=text.x,
@@ -597,7 +693,7 @@ class SkiaRenderer(
                 paint=skia_paint,
             )
         if self.get_current_value("stroke") is not NoneValue:
-            skia_paint = self._make_stroke_paint()
+            skia_paint = self._make_stroke_paint(text)
             self.canvas.drawString(
                 text=text.text,
                 x=text.x,
@@ -614,10 +710,10 @@ class SkiaRenderer(
             ellipse.y + ellipse.ry,
         )
         if self.get_current_value("fill") is not NoneValue:
-            skia_paint = self._make_fill_paint()
+            skia_paint = self._make_fill_paint(ellipse)
             self.canvas.drawOval(oval=skia_rect, paint=skia_paint)
         if self.get_current_value("stroke") is not NoneValue:
-            skia_paint = self._make_stroke_paint()
+            skia_paint = self._make_stroke_paint(ellipse)
             self.canvas.drawOval(oval=skia_rect, paint=skia_paint)
 
     def _render_rectangle(self, rectangle: Rectangle) -> None:
@@ -628,7 +724,7 @@ class SkiaRenderer(
             rectangle.y + rectangle.height,
         )
         if self.get_current_value("fill") is not NoneValue:
-            skia_paint = self._make_fill_paint()
+            skia_paint = self._make_fill_paint(rectangle)
             self.canvas.drawRoundRect(
                 rect=skia_rect,
                 rx=rectangle.rx,
@@ -636,7 +732,7 @@ class SkiaRenderer(
                 paint=skia_paint,
             )
         if self.get_current_value("stroke") is not NoneValue:
-            skia_paint = self._make_stroke_paint()
+            skia_paint = self._make_stroke_paint(rectangle)
             self.canvas.drawRoundRect(
                 rect=skia_rect,
                 rx=rectangle.rx,

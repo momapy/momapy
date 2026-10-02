@@ -1,7 +1,7 @@
 """SVG-like drawing elements for momapy.
 
 This module provides classes for creating and manipulating SVG-like drawing
-elements including paths, shapes, text, filters, and groups. It supports
+elements including paths, shapes, text, filters, gradients, and groups. It supports
 transformations, styling attributes, and conversion to geometry primitives.
 
 Examples:
@@ -88,8 +88,14 @@ __all__ = [
     "FontStyle",
     "FontWeight",
     "GaussianBlurEffect",
+    "Gradient",
+    "GradientStop",
+    "GradientUnits",
     "Group",
+    "LineCap",
+    "LineJoin",
     "LineTo",
+    "LinearGradient",
     "MoveTo",
     "NoneValue",
     "NoneValueType",
@@ -97,7 +103,9 @@ __all__ = [
     "Path",
     "PathAction",
     "QuadraticCurveTo",
+    "RadialGradient",
     "Rectangle",
+    "SpreadMethod",
     "Text",
     "TextAnchor",
     "drawing_elements_to_geometry",
@@ -436,6 +444,132 @@ class Filter(object):
         return dataclasses.replace(self, effects=tuple(effects))
 
 
+class GradientUnits(enum.Enum):
+    """Units for gradient coordinates.
+
+    Enumerates the coordinate systems in which a gradient is expressed.
+    """
+
+    USER_SPACE_ON_USE = "USER_SPACE_ON_USE"
+    OBJECT_BOUNDING_BOX = "OBJECT_BOUNDING_BOX"
+
+
+class SpreadMethod(enum.Enum):
+    """Spread methods for gradients.
+
+    Enumerates how a gradient is painted outside of its vector.
+    """
+
+    PAD = "PAD"
+    REFLECT = "REFLECT"
+    REPEAT = "REPEAT"
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class GradientStop(object):
+    """Stop of a gradient.
+
+    The opacity of the stop is the alpha of its color.
+    """
+
+    offset: float = dataclasses.field(
+        metadata={"description": "The offset of the stop, between 0 and 1"}
+    )
+    stop_color: Color = dataclasses.field(
+        metadata={"description": "The color of the stop"}
+    )
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class Gradient(abc.ABC):
+    """Abstract base class for gradients.
+
+    A gradient can be used as the fill or stroke of a drawing element. It
+    needs at least two stops, whose offsets must not decrease.
+    """
+
+    id_: str = dataclasses.field(
+        hash=False,
+        compare=False,
+        default_factory=make_uuid4_as_str,
+    )
+    gradient_units: GradientUnits = dataclasses.field(
+        default=GradientUnits.OBJECT_BOUNDING_BOX,
+        metadata={"description": "The units of the gradient coordinates"},
+    )
+    gradient_transform: tuple[Transformation, ...] = dataclasses.field(
+        default_factory=tuple,
+        metadata={"description": "The transform of the gradient"},
+    )
+    spread_method: SpreadMethod = dataclasses.field(
+        default=SpreadMethod.PAD,
+        metadata={"description": "The spread method of the gradient"},
+    )
+    stops: tuple[GradientStop, ...] = dataclasses.field(
+        default_factory=tuple,
+        metadata={"description": "The stops of the gradient"},
+    )
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class LinearGradient(Gradient):
+    """Linear gradient.
+
+    The gradient vector goes from (`x1`, `y1`) to (`x2`, `y2`).
+    """
+
+    x1: float = dataclasses.field(
+        default=0.0,
+        metadata={"description": "The x coordinate of the start of the vector"},
+    )
+    y1: float = dataclasses.field(
+        default=0.0,
+        metadata={"description": "The y coordinate of the start of the vector"},
+    )
+    x2: float = dataclasses.field(
+        default=1.0,
+        metadata={"description": "The x coordinate of the end of the vector"},
+    )
+    y2: float = dataclasses.field(
+        default=0.0,
+        metadata={"description": "The y coordinate of the end of the vector"},
+    )
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class RadialGradient(Gradient):
+    """Radial gradient.
+
+    The gradient goes from the focal circle (`fx`, `fy`, `fr`) to the end
+    circle (`cx`, `cy`, `r`).
+    """
+
+    cx: float = dataclasses.field(
+        default=0.5,
+        metadata={"description": "The x coordinate of the center of the end circle"},
+    )
+    cy: float = dataclasses.field(
+        default=0.5,
+        metadata={"description": "The y coordinate of the center of the end circle"},
+    )
+    r: float = dataclasses.field(
+        default=0.5,
+        metadata={"description": "The radius of the end circle"},
+    )
+    fx: float | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The x coordinate of the focal point, defaults to cx"},
+    )
+    fy: float | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The y coordinate of the focal point, defaults to cy"},
+    )
+    fr: float = dataclasses.field(
+        default=0.0,
+        metadata={"description": "The radius of the focal circle"},
+    )
+
+
 class FontStyle(enum.Enum):
     """Font style options.
 
@@ -480,6 +614,28 @@ class FillRule(enum.Enum):
     EVENODD = 1
 
 
+class LineJoin(enum.Enum):
+    """Line join options.
+
+    Enumerates the shapes used at the corners of stroked paths.
+    """
+
+    MITER = "MITER"
+    ROUND = "ROUND"
+    BEVEL = "BEVEL"
+
+
+class LineCap(enum.Enum):
+    """Line cap options.
+
+    Enumerates the shapes used at the ends of stroked open paths.
+    """
+
+    BUTT = "BUTT"
+    ROUND = "ROUND"
+    SQUARE = "SQUARE"
+
+
 PRESENTATION_ATTRIBUTES: dict[str, dict[str, typing.Any]] = {
     "fill": {
         "initial": black,
@@ -519,6 +675,14 @@ PRESENTATION_ATTRIBUTES: dict[str, dict[str, typing.Any]] = {
     },
     "stroke_dashoffset": {
         "initial": 0.0,
+        "inherited": True,
+    },
+    "stroke_linecap": {
+        "initial": LineCap.BUTT,
+        "inherited": True,
+    },
+    "stroke_linejoin": {
+        "initial": LineJoin.MITER,
         "inherited": True,
     },
     "stroke_width": {
@@ -575,9 +739,9 @@ class DrawingElement(abc.ABC):
         default=None,
         metadata={"description": "The class name of the drawing element"},
     )
-    fill: NoneValueType | Color | None = dataclasses.field(
+    fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None,
-        metadata={"description": "The fill color of the drawing element"},
+        metadata={"description": "The fill paint of the drawing element"},
     )
     fill_rule: FillRule | None = dataclasses.field(
         default=None,
@@ -606,9 +770,9 @@ class DrawingElement(abc.ABC):
     id_: str | None = dataclasses.field(
         default=None, metadata={"description": "The id of the drawing element"}
     )
-    stroke: NoneValueType | Color | None = dataclasses.field(
+    stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None,
-        metadata={"description": "The stroke color of the drawing element"},
+        metadata={"description": "The stroke paint of the drawing element"},
     )
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = dataclasses.field(
         default=None,
@@ -617,6 +781,14 @@ class DrawingElement(abc.ABC):
     stroke_dashoffset: NoneValueType | float | None = dataclasses.field(
         default=None,
         metadata={"description": "The stroke dashoffset of the drawing element"},
+    )
+    stroke_linecap: LineCap | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The stroke line cap of the drawing element"},
+    )
+    stroke_linejoin: LineJoin | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The stroke line join of the drawing element"},
     )
     stroke_width: NoneValueType | float | None = dataclasses.field(
         default=None,

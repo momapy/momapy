@@ -108,11 +108,12 @@ font-family: "DejaVu Sans";
 
 ### Colors
 
-Colors are given as names (any color defined in `momapy.coloring`). Hex values are not supported:
+Colors are given as names (any color defined in `momapy.coloring`) or as hex values, with 6 digits (`#rrggbb`) or 8 digits (`#rrggbbaa`, where `aa` is the alpha):
 
 ```css
 fill: royalblue;
-stroke: tomato;
+stroke: #8a6421;
+fill: #d4a34080;
 ```
 
 ### Special Values
@@ -138,17 +139,57 @@ filter: drop-shadow(2.0, 2.0, 3.0, 0.5, gray);
 
 Parameters: `drop-shadow(dx, dy, std_dev, opacity, color)`
 
+### Gradients
+
+`fill` and `stroke` accept gradients, written as in CSS:
+
+```css
+fill: linear-gradient(90deg, white 0%, lightgray 100%);
+fill: repeating-linear-gradient(135deg, #bf8f33 0 3, #d4a340 3 13);
+fill: radial-gradient(white, lightblue);
+```
+
+- `linear-gradient(angle, color stops)`: the angle is in `deg` and is optional (defaults to `180deg`, i.e. from top to bottom).
+- `repeating-linear-gradient(angle, color stops)`: same, the part between the first and last stops is repeated.
+- `radial-gradient(color stops)`: an ellipse centered in the element, going through its corners. Shape, size and position arguments are not supported.
+
+A color stop is a color followed by zero, one or two positions (`#bf8f33 0 3` is two stops with the same color, which gives a sharp edge). Positions are:
+
+- **percentages**: the gradient is laid out on the bounding box of each element. Missing positions are spread evenly, as in CSS. On a non-square element the angle follows the shape of the box (`45deg` goes from corner to corner);
+- **plain numbers** (only in `repeating-linear-gradient`): lengths in map coordinates. The gradient is then laid out on the whole map, so stripes keep the same spacing and line up across elements.
+
+Gradients are converted to `momapy.drawing.LinearGradient` and `momapy.drawing.RadialGradient` objects, which follow SVG's `linearGradient` and `radialGradient` and can also be built directly in Python.
+
+With the Skia and Cairo renderers, a gradient laid out on the bounding box (percentages) is not painted on text, as text has no bounding box in momapy.
+
 ## Common Properties
 
 ### Drawing Properties
 
 | Property | Description | Example |
 |----------|-------------|---------|
-| `fill` | Fill color | `fill: royalblue;` |
-| `stroke` | Stroke/border color | `stroke: black;` |
+| `fill` | Fill color or gradient | `fill: royalblue;`, `fill: radial-gradient(white, lightblue);` |
+| `stroke` | Stroke/border color or gradient | `stroke: black;` |
 | `stroke-width` | Stroke thickness | `stroke-width: 2.0;` |
 | `stroke-dasharray` | Dash pattern | `stroke-dasharray: 5, 5;` |
+| `stroke-linejoin` | Shape of corners: `miter` (default), `round`, `bevel` | `stroke-linejoin: round;` |
+| `stroke-linecap` | Shape of line ends: `butt` (default), `round`, `square` | `stroke-linecap: round;` |
 | `filter` | Visual effects | `filter: drop-shadow(2.0, 2.0, 3.0, 0.5, gray);` |
+
+Like the other stroke properties, `stroke-linejoin` and `stroke-linecap` also exist with prefixes (`path-stroke-linejoin`, `arrowhead-stroke-linejoin`, ...).
+
+A shape filled and stroked with the same color and `stroke-linejoin: round` gets its corners rounded by half the stroke width. The stroke also makes the shape bigger by half the stroke width on each side:
+
+```css
+GenericProcessLayout {
+    width: 14.0;
+    height: 14.0;
+    fill: #4c4c4c;
+    stroke: #4c4c4c;
+    stroke-width: 6.0;
+    stroke-linejoin: round;
+}
+```
 
 ### Text Properties
 

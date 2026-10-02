@@ -13,6 +13,7 @@ from momapy.coloring import black
 from momapy.coloring import white
 from momapy.core.elements import Direction
 from momapy.core.layout import Shape
+from momapy.drawing import Gradient
 from momapy.drawing import DrawingElement
 from momapy.drawing import Ellipse as EllipseDrawing
 from momapy.drawing import LineTo
@@ -807,7 +808,7 @@ class AssociationLayout(
     width: float = 20.0
     height: float = 20.0
 
-    fill: NoneValueType | Color | None = black
+    fill: NoneValueType | Color | Gradient | None = black
 
     def _make_shape(self) -> Shape:
         return EllipseShape(
@@ -954,7 +955,7 @@ class ConsumptionLayout(SBGNSingleHeadedArc):
 class ProductionLayout(SBGNSingleHeadedArc):
     """Production layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = black
+    arrowhead_fill: NoneValueType | Color | Gradient | None = black
     arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the arrowhead"}
     )
@@ -970,7 +971,7 @@ class ProductionLayout(SBGNSingleHeadedArc):
 class ModulationLayout(SBGNSingleHeadedArc):
     """Modulation layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the arrowhead"}
     )

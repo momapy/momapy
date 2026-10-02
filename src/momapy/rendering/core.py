@@ -9,9 +9,14 @@ import collections.abc
 import os
 import pathlib
 
+import numpy
+import numpy.typing
+
 from momapy.drawing import DEFAULT_FONT_FAMILY
 from momapy.drawing import DrawingElement
 from momapy.drawing import FontWeight
+from momapy.drawing import Gradient
+from momapy.drawing import GradientUnits
 from momapy.drawing import INITIAL_VALUES
 from momapy.drawing import PRESENTATION_ATTRIBUTES
 from momapy.plugins.core import PluginRegistry
@@ -19,6 +24,7 @@ from momapy.styling import StyleSheet
 from momapy.styling import apply_style_sheet
 from momapy.styling import combine_style_sheets
 from momapy.positioning import fit
+from momapy.geometry import Bbox
 from momapy.geometry import Translation
 from momapy.builder import Builder
 from momapy.builder import builder_from_object
@@ -93,6 +99,32 @@ def _detect_renderer(format_: str) -> str:
         except (ValueError, ImportError, ModuleNotFoundError):
             continue
     raise ValueError(f"No renderer available for format '{format_}'")
+
+
+def make_gradient_matrix(gradient: Gradient, bbox: Bbox) -> numpy.typing.NDArray:
+    """Make the matrix from the gradient space to the user space.
+
+    Args:
+        gradient: The gradient.
+        bbox: The bounding box of the painted element, used when the gradient
+            units are `GradientUnits.OBJECT_BOUNDING_BOX`.
+
+    Returns:
+        A 3x3 matrix.
+    """
+    matrix = numpy.identity(3)
+    if gradient.gradient_units == GradientUnits.OBJECT_BOUNDING_BOX:
+        north_west = bbox.north_west()
+        matrix = numpy.array(
+            [
+                [bbox.width, 0.0, north_west.x],
+                [0.0, bbox.height, north_west.y],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+    for transformation in gradient.gradient_transform:
+        matrix = numpy.matmul(matrix, transformation.to_matrix())
+    return matrix
 
 
 def render_layout_element(

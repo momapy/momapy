@@ -11,7 +11,7 @@ import typing
 
 import lxml.etree
 
-from momapy.drawing import NoneValue, NoneValueType
+from momapy.coloring import Color
 from momapy.geometry import Point, Rotation, get_transformation_for_frame
 from momapy.io._utils import make_unique_xml_id
 from momapy.sbml.io.sbml._qualifiers import QUALIFIER_MEMBER_TO_QUALIFIER_ATTRIBUTE
@@ -1259,7 +1259,7 @@ def get_line_attributes(
         if getattr(layout, "path_stroke_width", None) is not None:
             width = str(layout.path_stroke_width)
         stroke = getattr(layout, "path_stroke", None)
-        if stroke is not None and not isinstance(stroke, NoneValueType):
+        if isinstance(stroke, Color):
             color = color_to_cd_hex(stroke)
     attrs = {"width": width, "color": color}
     if include_type:
@@ -2036,7 +2036,7 @@ def make_celldesigner_list_of_compartment_aliases(
                 # so we write back the stroke color directly to preserve
                 # the original alpha.
                 stroke = getattr(layout_key, "stroke", None)
-                if stroke is not None and stroke is not NoneValue:
+                if isinstance(stroke, Color):
                     paint_color = color_to_cd_hex(stroke)
                 else:
                     paint_color = "ffcccccc"
@@ -2532,7 +2532,7 @@ def make_celldesigner_alias(
         make_celldesigner_element("singleLine", attributes={"width": line_width})
     )
     fill = getattr(layout, "fill", None)
-    if fill is not None and fill is not NoneValue:
+    if isinstance(fill, Color):
         paint_color = color_to_cd_hex(fill)
     else:
         paint_color = "fff7f7f7" if tag == "complexSpeciesAlias" else "ffccffcc"

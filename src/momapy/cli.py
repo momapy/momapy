@@ -71,6 +71,7 @@ Example:
 import argparse
 import base64
 import dataclasses
+import html
 import importlib
 import importlib.resources
 import json
@@ -695,6 +696,27 @@ def _extract_element_metadata(
     return metadata
 
 
+def _make_script_safe_json(obj: typing.Any) -> str:
+    """Serialize an object to JSON safe for embedding in a `<script>` block.
+
+    `json.dumps` leaves `<`, `>`, and `&` untouched, so a string value such
+    as `</script>` would close the enclosing script element. Escaping them as
+    Unicode escape sequences keeps the JSON valid while removing that risk.
+
+    Args:
+        obj: The object to serialize.
+
+    Returns:
+        The JSON text with `<`, `>`, and `&` escaped.
+    """
+    return (
+        json.dumps(obj)
+        .replace("&", "\\u0026")
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+    )
+
+
 def _render_svg_string(
     layout_element: typing.Any,
     to_top_left: bool = False,
@@ -838,6 +860,13 @@ $svg_content
 (function() {
     "use strict";
 
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
     var ELEMENT_METADATA = $element_metadata_json;
 
     // --- SVG and viewBox setup ---
@@ -959,13 +988,13 @@ $svg_content
         var elementId = resolved.element.id;
 
         var lines = [];
-        lines.push('<span class="tooltip-type">Type: ' + metadata.type + '</span>');
-        lines.push('<span class="tooltip-id">Layout ID: ' + elementId + '</span>');
+        lines.push('<span class="tooltip-type">Type: ' + escapeHtml(metadata.type) + '</span>');
+        lines.push('<span class="tooltip-id">Layout ID: ' + escapeHtml(elementId) + '</span>');
         if (metadata.model_id) {
-            lines.push('<span class="tooltip-model-id">Model ID: ' + metadata.model_id + '</span>');
+            lines.push('<span class="tooltip-model-id">Model ID: ' + escapeHtml(metadata.model_id) + '</span>');
         }
         if (metadata.label) {
-            lines.push('<span class="tooltip-label">Label: ' + metadata.label + '</span>');
+            lines.push('<span class="tooltip-label">Label: ' + escapeHtml(metadata.label) + '</span>');
         }
         tooltip.innerHTML = lines.join("<br>");
         tooltip.style.display = "block";
@@ -999,13 +1028,13 @@ $svg_content
         var metadata = resolved.metadata;
         var elementId = resolved.element.id;
         var rows = [];
-        rows.push('<span class="info-row info-type"><span class="info-key">Type: </span><span class="info-value">' + metadata.type + '</span></span>');
-        rows.push('<span class="info-row info-layout-id"><span class="info-key">Layout ID: </span><span class="info-value">' + elementId + '</span></span>');
+        rows.push('<span class="info-row info-type"><span class="info-key">Type: </span><span class="info-value">' + escapeHtml(metadata.type) + '</span></span>');
+        rows.push('<span class="info-row info-layout-id"><span class="info-key">Layout ID: </span><span class="info-value">' + escapeHtml(elementId) + '</span></span>');
         if (metadata.model_id) {
-            rows.push('<span class="info-row info-model-id"><span class="info-key">Model ID: </span><span class="info-value">' + metadata.model_id + '</span></span>');
+            rows.push('<span class="info-row info-model-id"><span class="info-key">Model ID: </span><span class="info-value">' + escapeHtml(metadata.model_id) + '</span></span>');
         }
         if (metadata.label) {
-            rows.push('<span class="info-row info-label"><span class="info-key">Label: </span><span class="info-value">' + metadata.label + '</span></span>');
+            rows.push('<span class="info-row info-label"><span class="info-key">Label: </span><span class="info-value">' + escapeHtml(metadata.label) + '</span></span>');
         }
         infoPanel.innerHTML = '<button id="info-panel-close">&times;</button>' + rows.join("");
         infoPanel.style.display = "block";
@@ -1208,9 +1237,9 @@ def _visualize_map(
         map_.layout,
         layout_id_to_model_id=layout_id_to_model_id,
     )
-    element_metadata_json = json.dumps(element_metadata)
+    element_metadata_json = _make_script_safe_json(element_metadata)
     if input_file_path is not None:
-        map_file_name = pathlib.Path(input_file_path).name
+        map_file_name = html.escape(pathlib.Path(input_file_path).name)
         page_title = f"momapy — {map_file_name}"
         toolbar_title = map_file_name
     else:
@@ -1239,7 +1268,7 @@ def _visualize_map(
         html_file.write(html_content)
         html_file_path = html_file.name
     print(f"Visualization saved to: {html_file_path}")
-    webbrowser.open(f"file://{html_file_path}")
+    webbrowser.open(pathlib.Path(html_file_path).as_uri())
 
 
 def _resolve_class(class_path: str) -> type:

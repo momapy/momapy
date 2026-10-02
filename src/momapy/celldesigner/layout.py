@@ -24,6 +24,9 @@ from momapy.core.elements import Direction
 from momapy.core.layout import Layout, Shape, TextLayout
 from momapy.geometry import Point, Rotation, Transformation, get_normalized_angle
 from momapy.coloring import Color, black, white
+from momapy.drawing import LineCap
+from momapy.drawing import LineJoin
+from momapy.drawing import Gradient
 from momapy.drawing import (
     ClosePath,
     DEFAULT_FONT_FAMILY,
@@ -75,7 +78,7 @@ from momapy.sbgn.elements import _SBGNMixin, _TextMixin
 class CellDesignerLayout(Layout):
     """CellDesigner layout."""
 
-    fill: NoneValueType | Color | None = white
+    fill: NoneValueType | Color | Gradient | None = white
 
 
 # Default label font sizes the CellDesigner reader injects when building layouts.
@@ -97,7 +100,7 @@ class GenericProteinLayout(_MultiNodeMixin, CellDesignerNode):
     rounded_corners: float = dataclasses.field(
         default=5.0, metadata={"description": "The radius of the rounded corners."}
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#CCFFCC")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CCFFCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -117,7 +120,7 @@ class GenericProteinActiveLayout(_MultiNodeMixin, CellDesignerNode):
     rounded_corners: float = dataclasses.field(
         default=5.0, metadata={"description": "The radius of the rounded corners."}
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -280,7 +283,7 @@ class IonChannelLayout(_MultiNodeMixin, CellDesignerNode):
         default=20.0,
         metadata={"description": "The width of the right-hand gate rectangle."},
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#CCFFCC")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CCFFCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -312,7 +315,7 @@ class IonChannelActiveLayout(_MultiNodeMixin, CellDesignerNode):
         default=20.0,
         metadata={"description": "The width of the right-hand gate rectangle."},
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -340,7 +343,7 @@ class ComplexLayout(_MultiNodeMixin, CellDesignerNode):
     cut_corners: float = dataclasses.field(
         default=6.0, metadata={"description": "The size of the cut corners."}
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#F7F7F7")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#F7F7F7")
     stroke_width: float | None = 2.0
     # label -12 from south
 
@@ -379,7 +382,7 @@ class ComplexActiveLayout(_MultiNodeMixin, CellDesignerNode):
     cut_corners: float = dataclasses.field(
         default=6.0, metadata={"description": "The size of the cut corners."}
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -414,7 +417,7 @@ class SimpleMoleculeLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 70.0
     height: float = 25.0
-    fill: NoneValueType | Color | None = Color.from_hex("#CCFF66")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CCFF66")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -429,7 +432,7 @@ class SimpleMoleculeActiveLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 70.0 + DEFAULT_ACTIVE_XSEP * 2
     height: float = 25.0 + DEFAULT_ACTIVE_YSEP * 2
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -448,7 +451,7 @@ class IonLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 35.0
     height: float = 35.0
-    fill: NoneValueType | Color | None = Color.from_hex("#9999FF")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#9999FF")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -463,7 +466,7 @@ class IonActiveLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 35.0 + DEFAULT_ACTIVE_XSEP * 2
     height: float = 35.0 + DEFAULT_ACTIVE_YSEP * 2
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -482,8 +485,8 @@ class UnknownLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 60.0
     height: float = 30.0
-    stroke: NoneValueType | Color | None = NoneValue
-    fill: NoneValueType | Color | None = Color.from_hex("#CCCCCC")
+    stroke: NoneValueType | Color | Gradient | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CCCCCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -498,7 +501,7 @@ class UnknownActiveLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 60.0 + DEFAULT_ACTIVE_XSEP * 2
     height: float = 30.0 + DEFAULT_ACTIVE_YSEP * 2
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -556,7 +559,7 @@ class DegradedActiveLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 30.0 + DEFAULT_ACTIVE_XSEP * 2
     height: float = 30.0 + DEFAULT_ACTIVE_YSEP * 2
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -575,7 +578,7 @@ class GeneLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 80.0
     height: float = 25.0
-    fill: NoneValueType | Color | None = Color.from_hex("#FFFFCC")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#FFFFCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -590,7 +593,7 @@ class GeneActiveLayout(_MultiNodeMixin, CellDesignerNode):
 
     width: float = 80.0 + DEFAULT_ACTIVE_XSEP * 2
     height: float = 25.0 + DEFAULT_ACTIVE_YSEP * 2
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -615,7 +618,7 @@ class PhenotypeLayout(_MultiNodeMixin, CellDesignerNode):
             "description": "The angle of the left and right points of the hexagon."
         },
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#CC99FF")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CC99FF")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -818,7 +821,7 @@ class PhenotypeActiveLayout(_MultiNodeMixin, CellDesignerNode):
             "description": "The angle of the left and right points of the hexagon."
         },
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -846,7 +849,7 @@ class RNALayout(_MultiNodeMixin, CellDesignerNode):
     angle: float = dataclasses.field(
         default=45.0, metadata={"description": "The slant angle of the parallelogram."}
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#66FF66")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#66FF66")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -1042,7 +1045,7 @@ class RNAActiveLayout(_MultiNodeMixin, CellDesignerNode):
     angle: float = dataclasses.field(
         default=45.0, metadata={"description": "The slant angle of the parallelogram."}
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -1066,7 +1069,7 @@ class AntisenseRNALayout(_MultiNodeMixin, CellDesignerNode):
     angle: float = dataclasses.field(
         default=45.0, metadata={"description": "The slant angle of the parallelogram."}
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#FFCCCC")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#FFCCCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -1265,7 +1268,7 @@ class AntisenseRNAActiveLayout(_MultiNodeMixin, CellDesignerNode):
     angle: float = dataclasses.field(
         default=45.0, metadata={"description": "The slant angle of the parallelogram."}
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -1410,7 +1413,7 @@ class TruncatedProteinLayout(_MultiNodeMixin, CellDesignerNode):
             "description": "The proportion of the width removed by the truncation."
         },
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#CCFFCC")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CCFFCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -1447,7 +1450,7 @@ class TruncatedProteinActiveLayout(_MultiNodeMixin, CellDesignerNode):
             "description": "The proportion of the width removed by the truncation."
         },
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -1477,7 +1480,7 @@ class ReceptorLayout(_MultiNodeMixin, CellDesignerNode):
         default=0.10,
         metadata={"description": "The proportion of the height taken by the notch."},
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#CCFFCC")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#CCFFCC")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -1681,7 +1684,7 @@ class ReceptorActiveLayout(_MultiNodeMixin, CellDesignerNode):
         default=0.10,
         metadata={"description": "The proportion of the height taken by the notch."},
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -1823,7 +1826,7 @@ class DrugLayout(_MultiNodeMixin, CellDesignerNode):
             "description": "The separation between the outer and inner outlines."
         },
     )
-    fill: NoneValueType | Color | None = Color.from_hex("#FF00FF")
+    fill: NoneValueType | Color | Gradient | None = Color.from_hex("#FF00FF")
     stroke_width: float | None = 1.0
 
     def _make_subunit_shape(
@@ -1856,7 +1859,7 @@ class DrugActiveLayout(_MultiNodeMixin, CellDesignerNode):
             "description": "The separation between the outer and inner outlines."
         },
     )
-    fill: NoneValueType | Color | None = NoneValue
+    fill: NoneValueType | Color | Gradient | None = NoneValue
     stroke_dasharray: NoneValueType | tuple[float, ...] | None = (
         4,
         2,
@@ -1914,10 +1917,10 @@ class _OvalCompartmentShape(Shape):
     height: float = dataclasses.field(
         metadata={"description": "The height of the shape."}
     )
-    inner_fill: NoneValueType | Color | None = dataclasses.field(
+    inner_fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None, metadata={"description": "The fill color of the inner ellipse."}
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None, metadata={"description": "The stroke color of the inner ellipse."}
     )
     inner_stroke_width: float | None = dataclasses.field(
@@ -1952,10 +1955,10 @@ class OvalCompartmentLayout(_SimpleNodeMixin, CellDesignerNode):
     """Oval compartment layout."""
 
     height: float = 16.0
-    inner_fill: NoneValueType | Color | None = dataclasses.field(
+    inner_fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=white, metadata={"description": "The fill color of the inner ellipse."}
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=black,
         metadata={"description": "The stroke color of the inner ellipse."},
     )
@@ -1995,14 +1998,14 @@ class _RectangleCompartmentShape(Shape):
     height: float = dataclasses.field(
         metadata={"description": "The height of the shape."}
     )
-    inner_fill: NoneValueType | Color | None = dataclasses.field(
+    inner_fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None, metadata={"description": "The fill color of the inner rectangle."}
     )
     inner_rounded_corners: float = dataclasses.field(
         default=10.0,
         metadata={"description": "The corner radius of the inner rectangle."},
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None,
         metadata={"description": "The stroke color of the inner rectangle."},
     )
@@ -2049,7 +2052,7 @@ class RectangleCompartmentLayout(_SimpleNodeMixin, CellDesignerNode):
 
     width: float = 16.0
     height: float = 16.0
-    inner_fill: NoneValueType | Color | None = dataclasses.field(
+    inner_fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=white,
         metadata={"description": "The fill color of the inner rectangle."},
     )
@@ -2057,7 +2060,7 @@ class RectangleCompartmentLayout(_SimpleNodeMixin, CellDesignerNode):
         default=10.0,
         metadata={"description": "The corner radius of the inner rectangle."},
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=black,
         metadata={"description": "The stroke color of the inner rectangle."},
     )
@@ -2124,7 +2127,7 @@ class _CornerCompartmentShape(Shape):
     corner: CompartmentCorner = dataclasses.field(
         metadata={"description": "The corner where the rounded border sits."}
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None, metadata={"description": "The stroke color of the inner border."}
     )
     inner_stroke_width: float | None = dataclasses.field(
@@ -2242,7 +2245,7 @@ class CornerCompartmentLayout(_SimpleNodeMixin, CellDesignerNode):
         default=CompartmentCorner.NORTHWEST,
         metadata={"description": "The corner where the rounded border sits."},
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=black,
         metadata={"description": "The stroke color of the inner border."},
     )
@@ -2288,7 +2291,7 @@ class _LineCompartmentShape(Shape):
     side: CompartmentSide = dataclasses.field(
         metadata={"description": "The side bounded by the double line."}
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None, metadata={"description": "The stroke color of the inner line."}
     )
     inner_stroke_width: float | None = dataclasses.field(
@@ -2357,7 +2360,7 @@ class LineCompartmentLayout(_SimpleNodeMixin, CellDesignerNode):
         default=CompartmentSide.NORTH,
         metadata={"description": "The side bounded by the double line."},
     )
-    inner_stroke: NoneValueType | Color | None = dataclasses.field(
+    inner_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=black, metadata={"description": "The stroke color of the inner line."}
     )
     inner_stroke_width: float | None = dataclasses.field(
@@ -2392,7 +2395,7 @@ class ConsumptionLayout(CellDesignerSingleHeadedArc):
 class ProductionLayout(CellDesignerSingleHeadedArc):
     """Production layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = black
+    arrowhead_fill: NoneValueType | Color | Gradient | None = black
     arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2409,7 +2412,7 @@ class ProductionLayout(CellDesignerSingleHeadedArc):
 class CatalysisLayout(CellDesignerSingleHeadedArc):
     """Catalysis layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=7.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2425,7 +2428,7 @@ class CatalysisLayout(CellDesignerSingleHeadedArc):
 class UnknownCatalysisLayout(CellDesignerSingleHeadedArc):
     """Unknown catalysis layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=7.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2469,7 +2472,7 @@ class UnknownInhibitionLayout(CellDesignerSingleHeadedArc):
 class PhysicalStimulationLayout(CellDesignerSingleHeadedArc):
     """Physical stimulation layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2485,7 +2488,7 @@ class PhysicalStimulationLayout(CellDesignerSingleHeadedArc):
 class UnknownPhysicalStimulationLayout(CellDesignerSingleHeadedArc):
     """Unknown physical stimulation layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2502,7 +2505,7 @@ class UnknownPhysicalStimulationLayout(CellDesignerSingleHeadedArc):
 class ModulationLayout(CellDesignerSingleHeadedArc):
     """Modulation layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2518,7 +2521,7 @@ class ModulationLayout(CellDesignerSingleHeadedArc):
 class UnknownModulationLayout(CellDesignerSingleHeadedArc):
     """Unknown modulation layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2535,7 +2538,7 @@ class UnknownModulationLayout(CellDesignerSingleHeadedArc):
 class PositiveInfluenceLayout(CellDesignerSingleHeadedArc):
     """Positive influence layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = NoneValue
+    arrowhead_fill: NoneValueType | Color | Gradient | None = NoneValue
     arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2552,7 +2555,7 @@ class PositiveInfluenceLayout(CellDesignerSingleHeadedArc):
 class UnknownPositiveInfluenceLayout(CellDesignerSingleHeadedArc):
     """Unknown positive influence layout."""
 
-    arrowhead_fill: NoneValueType | Color | None = NoneValue
+    arrowhead_fill: NoneValueType | Color | Gradient | None = NoneValue
     arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the arrowhead."}
     )
@@ -2573,7 +2576,7 @@ class TriggeringLayout(CellDesignerSingleHeadedArc):
     arrowhead_bar_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the arrowhead bar."}
     )
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_sep: float = dataclasses.field(
         default=5.0,
         metadata={"description": "The separation between the bar and the triangle."},
@@ -2615,7 +2618,7 @@ class UnknownTriggeringLayout(CellDesignerSingleHeadedArc):
     arrowhead_bar_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the arrowhead bar."}
     )
-    arrowhead_fill: NoneValueType | Color | None = white
+    arrowhead_fill: NoneValueType | Color | Gradient | None = white
     arrowhead_sep: float = dataclasses.field(
         default=5.0,
         metadata={"description": "The separation between the bar and the triangle."},
@@ -2683,11 +2686,11 @@ class _ReactionNodeMixin(_SBGNMixin):
         default=DEFAULT_FONT_FAMILY,
         metadata={"description": "The font family of the reaction node label."},
     )
-    reaction_node_font_fill: Color | NoneValueType = dataclasses.field(
+    reaction_node_font_fill: Color | Gradient | NoneValueType = dataclasses.field(
         default=black,
         metadata={"description": "The fill color of the reaction node label."},
     )
-    reaction_node_font_stroke: Color | NoneValueType = dataclasses.field(
+    reaction_node_font_stroke: Color | Gradient | NoneValueType = dataclasses.field(
         default=NoneValue,
         metadata={"description": "The stroke color of the reaction node label."},
     )
@@ -2714,7 +2717,7 @@ class _ReactionNodeMixin(_SBGNMixin):
             "description": "The index of the arc segment carrying the reaction node."
         },
     )
-    reaction_node_stroke: NoneValueType | Color | None = dataclasses.field(
+    reaction_node_stroke: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=black,
         metadata={"description": "The stroke color of the reaction node."},
     )
@@ -2731,7 +2734,15 @@ class _ReactionNodeMixin(_SBGNMixin):
         default=None,
         metadata={"description": "The dash offset of the reaction node's border."},
     )
-    reaction_node_fill: NoneValueType | Color | None = dataclasses.field(
+    reaction_node_stroke_linecap: LineCap | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The line cap of the reaction node's border."},
+    )
+    reaction_node_stroke_linejoin: LineJoin | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The line join of the reaction node's border."},
+    )
+    reaction_node_fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=white, metadata={"description": "The fill color of the reaction node."}
     )
     reaction_node_transform: NoneValueType | tuple[Transformation, ...] | None = (
@@ -2822,6 +2833,8 @@ class _ReactionNodeMixin(_SBGNMixin):
             stroke_width=self.reaction_node_stroke_width,
             stroke_dasharray=self.reaction_node_stroke_dasharray,
             stroke_dashoffset=self.reaction_node_stroke_dashoffset,
+            stroke_linecap=self.reaction_node_stroke_linecap,
+            stroke_linejoin=self.reaction_node_stroke_linejoin,
             fill=self.reaction_node_fill,
             transform=self.reaction_node_transform,
             filter_=self.reaction_node_filter,
@@ -2841,12 +2854,12 @@ class _ReactionNodeMixin(_SBGNMixin):
 class StateTransitionLayout(ReactionLayout, _ReactionNodeMixin):
     """State transition layout."""
 
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -2855,12 +2868,12 @@ class StateTransitionLayout(ReactionLayout, _ReactionNodeMixin):
         default=15.0, metadata={"description": "The width of the end arrowhead."}
     )
     end_shorten: float = 2.0
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -2890,12 +2903,12 @@ class KnownTransitionOmittedLayout(ReactionLayout, _ReactionNodeMixin):
     reaction_node_text: str | None = dataclasses.field(
         default="//", metadata={"description": "The text of the reaction node label."}
     )
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -2904,12 +2917,12 @@ class KnownTransitionOmittedLayout(ReactionLayout, _ReactionNodeMixin):
         default=15.0, metadata={"description": "The width of the end arrowhead."}
     )
     end_shorten: float = 2.0
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -2939,12 +2952,12 @@ class UnknownTransitionLayout(ReactionLayout, _ReactionNodeMixin):
     reaction_node_text: str | None = dataclasses.field(
         default="?", metadata={"description": "The text of the reaction node label."}
     )
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -2953,12 +2966,12 @@ class UnknownTransitionLayout(ReactionLayout, _ReactionNodeMixin):
         default=15.0, metadata={"description": "The width of the end arrowhead."}
     )
     end_shorten: float = 2.0
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -2981,12 +2994,12 @@ class UnknownTransitionLayout(ReactionLayout, _ReactionNodeMixin):
 class TranscriptionLayout(ReactionLayout, _ReactionNodeMixin):
     """Transcription layout."""
 
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -3003,12 +3016,12 @@ class TranscriptionLayout(ReactionLayout, _ReactionNodeMixin):
         2,
         4,
     )
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -3031,12 +3044,12 @@ class TranscriptionLayout(ReactionLayout, _ReactionNodeMixin):
 class TranslationLayout(ReactionLayout, _ReactionNodeMixin):
     """Translation layout."""
 
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -3051,12 +3064,12 @@ class TranslationLayout(ReactionLayout, _ReactionNodeMixin):
         2,
         4,
     )
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -3082,13 +3095,13 @@ class TransportLayout(ReactionLayout, _ReactionNodeMixin):
     end_arrowhead_bar_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead bar."}
     )
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_sep: float = dataclasses.field(
         default=5.0,
         metadata={"description": "The separation between the end bar and triangle."},
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -3105,13 +3118,13 @@ class TransportLayout(ReactionLayout, _ReactionNodeMixin):
     start_arrowhead_bar_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead bar."}
     )
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_sep: float = dataclasses.field(
         default=4.0,
         metadata={"description": "The separation between the start bar and triangle."},
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -3177,12 +3190,12 @@ class TransportLayout(ReactionLayout, _ReactionNodeMixin):
 class HeterodimerAssociationLayout(ReactionLayout, _ReactionNodeMixin):
     """Heterodimer association layout."""
 
-    end_arrowhead_fill: NoneValueType | Color | None = black
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -3191,12 +3204,12 @@ class HeterodimerAssociationLayout(ReactionLayout, _ReactionNodeMixin):
         default=15.0, metadata={"description": "The width of the end arrowhead."}
     )
     end_shorten: float = 2.0
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=6.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -3222,12 +3235,12 @@ class HeterodimerAssociationLayout(ReactionLayout, _ReactionNodeMixin):
 class DissociationLayout(ReactionLayout, _ReactionNodeMixin):
     """Dissociation layout."""
 
-    end_arrowhead_fill: NoneValueType | Color | None = white
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = white
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -3242,12 +3255,12 @@ class DissociationLayout(ReactionLayout, _ReactionNodeMixin):
         default=10.0, metadata={"description": "The width of the end arrowhead."}
     )
     end_shorten: float = 2.0
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0
@@ -3287,12 +3300,12 @@ class TruncationLayout(ReactionLayout, _ReactionNodeMixin):
     reaction_node_text: str | None = dataclasses.field(
         default="N", metadata={"description": "The text of the reaction node label."}
     )
-    end_arrowhead_fill: NoneValueType | Color | None = white
+    end_arrowhead_fill: NoneValueType | Color | Gradient | None = white
     end_arrowhead_filter: NoneValueType | Filter | None = None
     end_arrowhead_height: float = dataclasses.field(
         default=10.0, metadata={"description": "The height of the end arrowhead."}
     )
-    end_arrowhead_stroke: NoneValueType | Color | None = black
+    end_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     end_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     end_arrowhead_stroke_dashoffset: float | None = None
     end_arrowhead_stroke_width: float | None = 1.0
@@ -3307,12 +3320,12 @@ class TruncationLayout(ReactionLayout, _ReactionNodeMixin):
         default=10.0, metadata={"description": "The width of the end arrowhead."}
     )
     end_shorten: float = 2.0
-    start_arrowhead_fill: NoneValueType | Color | None = black
+    start_arrowhead_fill: NoneValueType | Color | Gradient | None = black
     start_arrowhead_filter: NoneValueType | Filter | None = None
     start_arrowhead_height: float = dataclasses.field(
         default=8.0, metadata={"description": "The height of the start arrowhead."}
     )
-    start_arrowhead_stroke: NoneValueType | Color | None = black
+    start_arrowhead_stroke: NoneValueType | Color | Gradient | None = black
     start_arrowhead_stroke_dasharray: NoneValueType | tuple[float, ...] | None = None
     start_arrowhead_stroke_dashoffset: float | None = None
     start_arrowhead_stroke_width: float | None = 1.0

@@ -5,6 +5,7 @@ import dataclasses
 from momapy.coloring import Color
 from momapy.coloring import white
 from momapy.core.layout import Layout
+from momapy.drawing import Gradient
 from momapy.drawing import NoneValueType
 
 
@@ -16,7 +17,7 @@ class SBGNLayout(Layout):
     including the positions and styles of glyphs.
     """
 
-    fill: NoneValueType | Color | None = white
+    fill: NoneValueType | Color | Gradient | None = white
 
 
 # Default label font sizes the SBGN-ML reader injects when building layouts.

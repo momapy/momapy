@@ -2,11 +2,13 @@
 
 import json
 import os
+import pathlib
 from unittest import mock
 
 import pytest
 
 import momapy.cli
+import momapy.io
 
 
 class TestCLIArgumentParsing:
@@ -281,3 +283,49 @@ class TestCLIMainEntryPoint:
         """Test that CLI module has an internal _run function."""
         assert hasattr(momapy.cli, "_run")
         assert callable(momapy.cli._run)
+
+
+class TestCLIVisualizeCommand:
+    """Tests for the visualize command's HTML escaping."""
+
+    SBGN_MAP_PATH = os.path.join(
+        os.path.dirname(__file__), "sbgn", "maps", "pd", "glycolysis.sbgn"
+    )
+
+    def test_make_script_safe_json_escapes_markup(self):
+        """Markup in JSON values cannot close the enclosing script element."""
+        text = momapy.cli._make_script_safe_json(
+            {"label": "</script><script>alert(1)</script>"}
+        )
+        assert "<" not in text
+        assert ">" not in text
+        assert "\\u003c" in text
+
+    def test_visualize_escapes_untrusted_values(self, capsys):
+        """A malicious label and filename are escaped in the generated page."""
+        result = momapy.io.read(self.SBGN_MAP_PATH)
+        malicious_label = "</script><script>alert(1)</script>"
+        metadata = {
+            "n1": {
+                "type": "TextLayout",
+                "label": malicious_label,
+                "model_id": None,
+                "parent_id": None,
+            }
+        }
+        with (
+            mock.patch.object(
+                momapy.cli, "_extract_element_metadata", return_value=metadata
+            ),
+            mock.patch.object(momapy.cli.webbrowser, "open") as open_mock,
+        ):
+            momapy.cli._visualize_map(result.obj, "evil<script>.sbgn")
+        open_mock.assert_called_once()
+        assert open_mock.call_args[0][0].startswith("file://")
+        html_path = capsys.readouterr().out.strip().split(": ", 1)[1]
+        content = pathlib.Path(html_path).read_text()
+        assert "<script>alert(1)" not in content
+        assert "\\u003cscript\\u003ealert(1)" in content
+        assert "&lt;script&gt;" in content
+        assert "escapeHtml(metadata.label)" in content
+        pathlib.Path(html_path).unlink()

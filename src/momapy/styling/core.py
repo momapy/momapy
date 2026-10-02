@@ -7,6 +7,7 @@ docstring for usage examples.
 import abc
 import collections.abc
 import dataclasses
+import math
 import os
 import pathlib
 import typing
@@ -21,13 +22,21 @@ from momapy.builder import builder_from_object
 from momapy.builder import get_or_make_builder_cls
 from momapy.builder import isinstance_or_builder
 from momapy.builder import object_from_builder
+from momapy.coloring import Color
 from momapy.coloring import has_color
 from momapy.core.elements import LayoutElement
 from momapy.core.map import Map
 from momapy.drawing import DropShadowEffect
 from momapy.drawing import Filter
+from momapy.drawing import GradientStop
+from momapy.drawing import GradientUnits
+from momapy.drawing import LineCap
+from momapy.drawing import LineJoin
+from momapy.drawing import LinearGradient
 from momapy.drawing import NoneValue
 from momapy.drawing import PRESENTATION_ATTRIBUTES
+from momapy.drawing import RadialGradient
+from momapy.drawing import SpreadMethod
 
 
 class StyleCollection(dict):
@@ -571,7 +580,8 @@ _css_float_value = pyparsing.Combine(
 )
 _css_string_value = pyparsing.quoted_string
 _css_color_name_value = pyparsing.Word(pyparsing.alphas + "_")
-_css_color_value = _css_color_name_value
+_css_color_hex_value = pyparsing.Regex(r"#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?")
+_css_color_value = _css_color_hex_value | _css_color_name_value
 _css_int_value = pyparsing.Word(pyparsing.nums)
 _css_drop_shadow_filter_value = (
     pyparsing.Literal("drop-shadow(")
@@ -587,8 +597,44 @@ _css_drop_shadow_filter_value = (
     + pyparsing.Literal(")")
 )
 _css_filter_value = _css_drop_shadow_filter_value
+_css_gradient_angle_value = pyparsing.Regex(r"-?[0-9]+(\.[0-9]+)?deg")
+_css_gradient_percentage_value = pyparsing.Regex(r"-?[0-9]+(\.[0-9]+)?%")
+_css_gradient_length_value = pyparsing.Regex(r"-?[0-9]+(\.[0-9]+)?")
+_css_gradient_position_value = (
+    _css_gradient_percentage_value | _css_gradient_length_value
+)
+_css_gradient_color_stop_value = pyparsing.Group(
+    _css_color_value
+    + pyparsing.Optional(_css_gradient_position_value)
+    + pyparsing.Optional(_css_gradient_position_value)
+)
+_css_gradient_color_stops_value = pyparsing.Group(
+    pyparsing.DelimitedList(_css_gradient_color_stop_value, ",", min=2)
+)
+_css_linear_gradient_value = (
+    pyparsing.Literal("linear-gradient(")
+    + pyparsing.Optional(_css_gradient_angle_value + pyparsing.Suppress(","))
+    + _css_gradient_color_stops_value
+    + pyparsing.Literal(")")
+)
+_css_repeating_linear_gradient_value = (
+    pyparsing.Literal("repeating-linear-gradient(")
+    + pyparsing.Optional(_css_gradient_angle_value + pyparsing.Suppress(","))
+    + _css_gradient_color_stops_value
+    + pyparsing.Literal(")")
+)
+_css_radial_gradient_value = (
+    pyparsing.Literal("radial-gradient(")
+    + _css_gradient_color_stops_value
+    + pyparsing.Literal(")")
+)
+_css_keyword_value = pyparsing.one_of("miter round bevel butt square", as_keyword=True)
 _css_simple_value = (
-    _css_drop_shadow_filter_value
+    _css_linear_gradient_value
+    | _css_repeating_linear_gradient_value
+    | _css_radial_gradient_value
+    | _css_drop_shadow_filter_value
+    | _css_keyword_value
     | _css_unset_value
     | _css_none_value
     | _css_float_value
@@ -676,6 +722,146 @@ def _resolve_css_color_name_value(results: pyparsing.ParseResults) -> typing.Any
     return getattr(momapy.coloring, results[0])
 
 
+@_css_color_hex_value.set_parse_action
+def _resolve_css_color_hex_value(results: pyparsing.ParseResults) -> Color:
+    if len(results[0]) == 7:
+        return Color.from_hex(results[0])
+    return Color.from_hexa(results[0])
+
+
+@_css_gradient_angle_value.set_parse_action
+def _resolve_css_gradient_angle_value(results: pyparsing.ParseResults) -> float:
+    return float(results[0].removesuffix("deg"))
+
+
+@_css_gradient_length_value.set_parse_action
+def _resolve_css_gradient_length_value(results: pyparsing.ParseResults) -> float:
+    return float(results[0])
+
+
+def _make_css_gradient_stops(
+    color_stops: pyparsing.ParseResults, allow_lengths: bool
+) -> tuple[list[Color], list[float], bool]:
+    colors = []
+    positions = []
+    for color_stop in color_stops:
+        if len(color_stop) == 1:
+            colors.append(color_stop[0])
+            positions.append(None)
+        for position in color_stop[1:]:
+            colors.append(color_stop[0])
+            positions.append(position)
+    has_lengths = any(isinstance(position, float) for position in positions)
+    if has_lengths:
+        if not allow_lengths:
+            raise ValueError(
+                "gradient positions must be percentages, lengths are only "
+                "supported in repeating-linear-gradient"
+            )
+        if not all(isinstance(position, float) for position in positions):
+            raise ValueError(
+                "all gradient positions must be given as lengths, or none of them"
+            )
+    else:
+        positions = [
+            None if position is None else float(position.removesuffix("%")) / 100
+            for position in positions
+        ]
+        if positions[0] is None:
+            positions[0] = 0.0
+        if positions[-1] is None:
+            positions[-1] = 1.0
+        previous_index = 0
+        for index in range(1, len(positions)):
+            if positions[index] is not None:
+                step = (positions[index] - positions[previous_index]) / (
+                    index - previous_index
+                )
+                for missing_index in range(previous_index + 1, index):
+                    positions[missing_index] = positions[previous_index] + step * (
+                        missing_index - previous_index
+                    )
+                previous_index = index
+    for index in range(1, len(positions)):
+        positions[index] = max(positions[index], positions[index - 1])
+    return colors, positions, has_lengths
+
+
+def _make_css_linear_gradient(
+    angle: float, color_stops: pyparsing.ParseResults, repeating: bool
+) -> LinearGradient:
+    colors, positions, has_lengths = _make_css_gradient_stops(
+        color_stops, allow_lengths=repeating
+    )
+    direction_x = math.sin(math.radians(angle))
+    direction_y = -math.cos(math.radians(angle))
+    if has_lengths:
+        gradient_units = GradientUnits.USER_SPACE_ON_USE
+        start_x = 0.0
+        start_y = 0.0
+    else:
+        gradient_units = GradientUnits.OBJECT_BOUNDING_BOX
+        length = abs(direction_x) + abs(direction_y)
+        direction_x *= length
+        direction_y *= length
+        start_x = 0.5 - direction_x / 2
+        start_y = 0.5 - direction_y / 2
+    if repeating:
+        first = positions[0]
+        last = positions[-1]
+        if last == first:
+            raise ValueError("repeating gradients must have a non-zero period")
+        offsets = [(position - first) / (last - first) for position in positions]
+        spread_method = SpreadMethod.REPEAT
+    else:
+        first = 0.0
+        last = 1.0
+        offsets = [min(max(position, 0.0), 1.0) for position in positions]
+        spread_method = SpreadMethod.PAD
+    return LinearGradient(
+        gradient_units=gradient_units,
+        spread_method=spread_method,
+        x1=start_x + direction_x * first,
+        y1=start_y + direction_y * first,
+        x2=start_x + direction_x * last,
+        y2=start_y + direction_y * last,
+        stops=tuple(
+            GradientStop(offset=offset, stop_color=color)
+            for offset, color in zip(offsets, colors)
+        ),
+    )
+
+
+@_css_linear_gradient_value.set_parse_action
+def _resolve_css_linear_gradient_value(
+    results: pyparsing.ParseResults,
+) -> LinearGradient:
+    angle = results[1] if len(results) == 4 else 180.0
+    return _make_css_linear_gradient(angle, results[-2], repeating=False)
+
+
+@_css_repeating_linear_gradient_value.set_parse_action
+def _resolve_css_repeating_linear_gradient_value(
+    results: pyparsing.ParseResults,
+) -> LinearGradient:
+    angle = results[1] if len(results) == 4 else 180.0
+    return _make_css_linear_gradient(angle, results[-2], repeating=True)
+
+
+@_css_radial_gradient_value.set_parse_action
+def _resolve_css_radial_gradient_value(
+    results: pyparsing.ParseResults,
+) -> RadialGradient:
+    colors, positions, _ = _make_css_gradient_stops(results[1], allow_lengths=False)
+    return RadialGradient(
+        r=math.sqrt(2) / 2,
+        stops=tuple(
+            GradientStop(offset=min(max(position, 0.0), 1.0), stop_color=color)
+            for position, color in zip(positions, colors)
+        ),
+    )
+
+
 @_css_drop_shadow_filter_value.set_parse_action
 def _resolve_css_drop_shadow_filter_value(
     results: pyparsing.ParseResults,
@@ -745,9 +931,21 @@ def _resolve_css_attribute_name(results: pyparsing.ParseResults) -> str:
 
 @_css_style.set_parse_action
 def _resolve_css_style(results: pyparsing.ParseResults) -> typing.Any:
+    attribute_name = results[0]
+    attribute_value = results[2]
+    for suffix, enum_class in [
+        ("stroke_linecap", LineCap),
+        ("stroke_linejoin", LineJoin),
+    ]:
+        if attribute_name.endswith(suffix) and isinstance(attribute_value, str):
+            if attribute_value.upper() not in enum_class.__members__:
+                raise ValueError(
+                    f"{attribute_value} is not a valid value for {attribute_name}"
+                )
+            attribute_value = enum_class[attribute_value.upper()]
     return (
-        results[0],
-        results[2],
+        attribute_name,
+        attribute_value,
     )
 
 

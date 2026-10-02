@@ -28,15 +28,23 @@ from momapy.drawing import FloodEffect
 from momapy.drawing import FontStyle
 from momapy.drawing import FontWeight
 from momapy.drawing import GaussianBlurEffect
+from momapy.drawing import Gradient
+from momapy.drawing import GradientStop
+from momapy.drawing import GradientUnits
 from momapy.drawing import Group
+from momapy.drawing import LineCap
+from momapy.drawing import LineJoin
 from momapy.drawing import LineTo
+from momapy.drawing import LinearGradient
 from momapy.drawing import MoveTo
 from momapy.drawing import NoneValue
 from momapy.drawing import OffsetEffect
 from momapy.drawing import Path
 from momapy.drawing import PRESENTATION_ATTRIBUTES
 from momapy.drawing import QuadraticCurveTo
+from momapy.drawing import RadialGradient
 from momapy.drawing import Rectangle
+from momapy.drawing import SpreadMethod
 from momapy.drawing import Text
 from momapy.drawing import TextAnchor
 from momapy.coloring import Color
@@ -199,6 +207,19 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
         FilterUnits.USER_SPACE_ON_USE: "UserSpaceOnUse",
         FilterUnits.OBJECT_BOUNDING_BOX: "objectBoundingBox",
     }
+    _gr_class_func_mapping: typing.ClassVar[dict[type, str]] = {
+        LinearGradient: "_make_linear_gradient_element",
+        RadialGradient: "_make_radial_gradient_element",
+    }
+    _gr_gradient_units_value_mapping: typing.ClassVar[dict[typing.Any, str]] = {
+        GradientUnits.USER_SPACE_ON_USE: "userSpaceOnUse",
+        GradientUnits.OBJECT_BOUNDING_BOX: "objectBoundingBox",
+    }
+    _gr_spread_method_value_mapping: typing.ClassVar[dict[typing.Any, str]] = {
+        SpreadMethod.PAD: "pad",
+        SpreadMethod.REFLECT: "reflect",
+        SpreadMethod.REPEAT: "repeat",
+    }
     _fe_input_value_mapping: typing.ClassVar[dict[typing.Any, str]] = {
         FilterEffectInput.SOURCE_GRAPHIC: "SourceGraphic",
         FilterEffectInput.SOURCE_ALPHA: "SourceAlpha",
@@ -227,6 +248,16 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
         FillRule.NONZERO: "nonzero",
         FillRule.EVENODD: "evenodd",
     }
+    _de_stroke_linecap_value_mapping: typing.ClassVar[dict[typing.Any, str]] = {
+        LineCap.BUTT: "butt",
+        LineCap.ROUND: "round",
+        LineCap.SQUARE: "square",
+    }
+    _de_stroke_linejoin_value_mapping: typing.ClassVar[dict[typing.Any, str]] = {
+        LineJoin.MITER: "miter",
+        LineJoin.ROUND: "round",
+        LineJoin.BEVEL: "bevel",
+    }
 
     svg: SVGElement = dataclasses.field(
         metadata={
@@ -235,6 +266,7 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
     )
     _config: dict[str, typing.Any] = dataclasses.field(default_factory=dict)
     _filter_elements: list[SVGElement] = dataclasses.field(default_factory=list)
+    _gradient_elements: list[SVGElement] = dataclasses.field(default_factory=list)
 
     @classmethod
     def from_file(
@@ -298,11 +330,12 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
     def end_session(self) -> None:
         """End the rendering session and save the output.
 
-        This method finalizes the SVG document, adds any filter definitions
-        to the defs section, and writes the output to the file.
+        This method finalizes the SVG document, adds any filter and gradient
+        definitions to the defs section, and writes the output to the file.
         """
-        if self._filter_elements:
-            defs = SVGElement(name="defs", elements=self._filter_elements)
+        defs_elements = self._filter_elements + self._gradient_elements
+        if defs_elements:
+            defs = SVGElement(name="defs", elements=defs_elements)
             self.svg.add_element(defs)
         if self._config.get("output_file") is not None:
             with open(self._config["output_file"], "w", encoding="utf-8") as f:
@@ -389,9 +422,18 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
                     attr_value = "none"
                 else:
                     if attr_name == "stroke" or attr_name == "fill":
-                        opacity_value = self._make_opacity_value(attr_value)
-                        attributes[f"{attr_name}-opacity"] = opacity_value
-                        attr_value = self._make_color_value(attr_value)
+                        class_ = type(attr_value)
+                        if issubclass(class_, Builder):
+                            class_ = class_._cls_to_build
+                        if issubclass(class_, Gradient):
+                            gradient_element = self._make_gradient_element(attr_value)
+                            if gradient_element not in self._gradient_elements:
+                                self._gradient_elements.append(gradient_element)
+                            attr_value = f"url(#{attr_value.id_})"
+                        else:
+                            opacity_value = self._make_opacity_value(attr_value)
+                            attributes[f"{attr_name}-opacity"] = opacity_value
+                            attr_value = self._make_color_value(attr_value)
                     elif attr_name == "transform":
                         attr_value = self._make_transform_value(attr_value)
                     elif attr_name == "filter_":
@@ -408,6 +450,10 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
                         attr_value = self._te_text_anchor_value_mapping[attr_value]
                     elif attr_name == "fill_rule":
                         attr_value = self._de_fill_rule_value_mapping[attr_value]
+                    elif attr_name == "stroke_linecap":
+                        attr_value = self._de_stroke_linecap_value_mapping[attr_value]
+                    elif attr_name == "stroke_linejoin":
+                        attr_value = self._de_stroke_linejoin_value_mapping[attr_value]
                     elif attr_name == "stroke_dasharray":
                         attr_value = " ".join(
                             [
@@ -435,6 +481,69 @@ class SVGNativeRenderer(Renderer, SupportsFileOutput):
             subelement = self._make_filter_effect_element(filter_effect)
             subelements.append(subelement)
         element = SVGElement(name=name, attributes=attributes, elements=subelements)
+        return element
+
+    def _make_gradient_element(self, gradient: Gradient) -> SVGElement:
+        class_ = type(gradient)
+        if issubclass(class_, Builder):
+            class_ = class_._cls_to_build
+        gr_func = getattr(self, self._gr_class_func_mapping[class_])
+        element = gr_func(gradient)
+        return element
+
+    def _make_gradient_attributes(self, gradient: Gradient) -> dict[str, typing.Any]:
+        attributes = {}
+        attributes["id"] = gradient.id_
+        attributes["gradientUnits"] = self._gr_gradient_units_value_mapping[
+            gradient.gradient_units
+        ]
+        attributes["spreadMethod"] = self._gr_spread_method_value_mapping[
+            gradient.spread_method
+        ]
+        if gradient.gradient_transform:
+            attributes["gradientTransform"] = self._make_transform_value(
+                gradient.gradient_transform
+            )
+        return attributes
+
+    def _make_gradient_stop_element(self, stop: GradientStop) -> SVGElement:
+        attributes = {}
+        attributes["offset"] = stop.offset
+        attributes["stop-color"] = self._make_color_value(stop.stop_color)
+        attributes["stop-opacity"] = self._make_opacity_value(stop.stop_color)
+        element = SVGElement(name="stop", attributes=attributes)
+        return element
+
+    def _make_linear_gradient_element(self, gradient: LinearGradient) -> SVGElement:
+        attributes = self._make_gradient_attributes(gradient)
+        attributes["x1"] = gradient.x1
+        attributes["y1"] = gradient.y1
+        attributes["x2"] = gradient.x2
+        attributes["y2"] = gradient.y2
+        subelements = [
+            self._make_gradient_stop_element(stop) for stop in gradient.stops
+        ]
+        element = SVGElement(
+            name="linearGradient", attributes=attributes, elements=subelements
+        )
+        return element
+
+    def _make_radial_gradient_element(self, gradient: RadialGradient) -> SVGElement:
+        attributes = self._make_gradient_attributes(gradient)
+        attributes["cx"] = gradient.cx
+        attributes["cy"] = gradient.cy
+        attributes["r"] = gradient.r
+        if gradient.fx is not None:
+            attributes["fx"] = gradient.fx
+        if gradient.fy is not None:
+            attributes["fy"] = gradient.fy
+        attributes["fr"] = gradient.fr
+        subelements = [
+            self._make_gradient_stop_element(stop) for stop in gradient.stops
+        ]
+        element = SVGElement(
+            name="radialGradient", attributes=attributes, elements=subelements
+        )
         return element
 
     def _make_filter_effect_element(self, filter_effect: FilterEffect) -> SVGElement:

@@ -840,3 +840,141 @@ class TestStylableAttributes:
             ):
                 resolved = f"{resolved}_"
             assert resolved in field_names
+
+
+def _parse_fill(value):
+    import momapy.core.layout
+
+    style_sheet = momapy.styling.StyleSheet.from_string(f"A {{ fill: {value}; }}")
+    return list(style_sheet.values())[0]["fill"]
+
+
+class TestCSSColorsAndGradients:
+    """Hex colors and CSS gradient functions."""
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            ("#d4a340", momapy.coloring.Color(212, 163, 64)),
+            ("#D4A34080", momapy.coloring.Color(212, 163, 64, 128 / 255)),
+        ],
+    )
+    def test_hex_colors(self, value, expected):
+        """6-digit and 8-digit hex colors are parsed."""
+        assert _parse_fill(value) == expected
+
+    def test_repeating_linear_gradient_with_lengths(self):
+        """Lengths give a user space gradient with one period as vector."""
+        import momapy.drawing
+
+        gradient = _parse_fill(
+            "repeating-linear-gradient(135deg, #bf8f33 0 3, #d4a340 3 13)"
+        )
+        assert isinstance(gradient, momapy.drawing.LinearGradient)
+        assert gradient.gradient_units == momapy.drawing.GradientUnits.USER_SPACE_ON_USE
+        assert gradient.spread_method == momapy.drawing.SpreadMethod.REPEAT
+        assert (gradient.x1, gradient.y1) == pytest.approx((0.0, 0.0))
+        assert (gradient.x2, gradient.y2) == pytest.approx((9.1924, 9.1924), abs=1e-4)
+        assert [stop.offset for stop in gradient.stops] == pytest.approx(
+            [0.0, 3 / 13, 3 / 13, 1.0]
+        )
+        assert gradient.stops[1].stop_color == momapy.coloring.Color(191, 143, 51)
+        assert gradient.stops[2].stop_color == momapy.coloring.Color(212, 163, 64)
+
+    def test_linear_gradient_defaults(self):
+        """Without angle the gradient goes to the bottom of the box."""
+        import momapy.drawing
+
+        gradient = _parse_fill("linear-gradient(red, green, blue 80%, black)")
+        assert (
+            gradient.gradient_units == momapy.drawing.GradientUnits.OBJECT_BOUNDING_BOX
+        )
+        assert gradient.spread_method == momapy.drawing.SpreadMethod.PAD
+        assert (gradient.x1, gradient.y1, gradient.x2, gradient.y2) == pytest.approx(
+            (0.5, 0.0, 0.5, 1.0)
+        )
+        assert [stop.offset for stop in gradient.stops] == pytest.approx(
+            [0.0, 0.4, 0.8, 1.0]
+        )
+
+    def test_linear_gradient_diagonal_reaches_corners(self):
+        """A 45deg gradient goes from the bottom left to the top right corner."""
+        gradient = _parse_fill("linear-gradient(45deg, red, blue)")
+        assert (gradient.x1, gradient.y1, gradient.x2, gradient.y2) == pytest.approx(
+            (0.0, 1.0, 1.0, 0.0)
+        )
+
+    def test_decreasing_positions_are_raised(self):
+        """A position smaller than the previous one is raised to it."""
+        gradient = _parse_fill("linear-gradient(red 50%, blue 20%)")
+        assert [stop.offset for stop in gradient.stops] == pytest.approx([0.5, 0.5])
+
+    def test_radial_gradient(self):
+        """The default radial gradient is the ellipse through the corners."""
+        import math
+        import momapy.drawing
+
+        gradient = _parse_fill("radial-gradient(white, lightblue)")
+        assert isinstance(gradient, momapy.drawing.RadialGradient)
+        assert (gradient.cx, gradient.cy) == (0.5, 0.5)
+        assert gradient.r == pytest.approx(math.sqrt(2) / 2)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            "linear-gradient(90deg, red 0, blue 10)",
+            "repeating-linear-gradient(red 0, blue 10%)",
+            "repeating-linear-gradient(red, blue 10)",
+            "repeating-linear-gradient(red 5%, blue 5%)",
+        ],
+    )
+    def test_invalid_gradients(self, value):
+        """Invalid position combinations raise ValueError."""
+        with pytest.raises(ValueError):
+            _parse_fill(value)
+
+
+class TestCSSLineJoinsAndCaps:
+    """stroke-linejoin and stroke-linecap keywords."""
+
+    def test_keywords_are_converted(self):
+        """Keywords become LineJoin and LineCap values, prefixes included."""
+        import momapy.drawing
+
+        style_sheet = momapy.styling.StyleSheet.from_string(
+            "A { stroke-linejoin: round; path-stroke-linecap: square; }"
+        )
+        style_collection = list(style_sheet.values())[0]
+        assert style_collection["stroke_linejoin"] == momapy.drawing.LineJoin.ROUND
+        assert style_collection["path_stroke_linecap"] == momapy.drawing.LineCap.SQUARE
+
+    def test_wrong_keyword_raises(self):
+        """A join keyword is not accepted as a cap."""
+        with pytest.raises(ValueError):
+            momapy.styling.StyleSheet.from_string("A { stroke-linecap: miter; }")
+
+    def test_arrowhead_line_join_reaches_drawing_elements(self):
+        """arrowhead-stroke-linejoin ends up on the arrowhead drawing elements."""
+        import pathlib
+        import momapy.drawing
+        import momapy.io.core
+        import momapy.sbgn.pd
+
+        map_file = pathlib.Path(__file__).parent / "sbgn/maps/pd/mapk_cascade.sbgn"
+        map_ = momapy.io.core.read(map_file).obj
+        style_sheet = momapy.styling.StyleSheet.from_string(
+            "ProductionLayout { arrowhead-stroke-linejoin: round; }"
+        )
+        map_ = momapy.styling.apply_style_sheet(map_, style_sheet)
+        production = next(
+            layout_element
+            for layout_element in map_.layout.descendants()
+            if isinstance(layout_element, momapy.sbgn.pd.ProductionLayout)
+        )
+        drawing_elements = list(production.drawing_elements())
+        line_joins = []
+        while drawing_elements:
+            drawing_element = drawing_elements.pop()
+            line_joins.append(drawing_element.stroke_linejoin)
+            drawing_elements.extend(getattr(drawing_element, "elements", ()))
+        assert momapy.drawing.LineJoin.ROUND in line_joins

@@ -237,3 +237,77 @@ class TestSBGNMapAnnotationRoundTrip:
         map2 = result2.obj
         assert map2 in result2.element_to_annotations
         assert expected in result2.element_to_annotations[map2]
+
+
+def _make_stoichiometry_sbgnml():
+    """Build a minimal PD map with cardinality on both process arcs."""
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<sbgn xmlns="http://sbgn.org/libsbgn/0.3">\n'
+        '  <map language="process description">\n'
+        '    <glyph id="m1" class="macromolecule">\n'
+        '      <label text="M1"/>\n'
+        '      <bbox x="100" y="100" w="80" h="40"/>\n'
+        "    </glyph>\n"
+        '    <glyph id="m2" class="macromolecule">\n'
+        '      <label text="M2"/>\n'
+        '      <bbox x="300" y="100" w="80" h="40"/>\n'
+        "    </glyph>\n"
+        '    <glyph id="p1" class="process">\n'
+        '      <bbox x="190" y="80" w="20" h="20"/>\n'
+        "    </glyph>\n"
+        '    <arc id="c1" class="consumption" source="m1" target="p1">\n'
+        '      <start x="140" y="120"/>\n'
+        '      <end x="190" y="90"/>\n'
+        '      <glyph id="s1" class="stoichiometry">\n'
+        '        <label text="2"/>\n'
+        '        <bbox x="150" y="90" w="16" h="16"/>\n'
+        "      </glyph>\n"
+        "    </arc>\n"
+        '    <arc id="pr1" class="production" source="p1" target="m2">\n'
+        '      <start x="210" y="90"/>\n'
+        '      <end x="260" y="120"/>\n'
+        '      <glyph id="s2" class="stoichiometry">\n'
+        '        <label text="3"/>\n'
+        '        <bbox x="220" y="90" w="16" h="16"/>\n'
+        "      </glyph>\n"
+        "    </arc>\n"
+        "  </map>\n"
+        "</sbgn>\n"
+    )
+
+
+class TestSBGNStoichiometryRoundTrip:
+    """Regression test for cardinality serialization.
+
+    The reader stored stoichiometry as a ``CardinalityLayout`` child of the
+    process arc, but the writer emitted no ``<glyph class="stoichiometry">``,
+    so every cardinality glyph was silently dropped on write.
+    """
+
+    def test_stoichiometry_roundtrip(self, temp_dir):
+        input_file = os.path.join(temp_dir, "stoichiometry.sbgn")
+        with open(input_file, "w", encoding="utf-8") as f:
+            f.write(_make_stoichiometry_sbgnml())
+
+        map1 = momapy.io.core.read(input_file, reader="sbgnml").obj
+
+        def cardinality_texts(map_):
+            texts = []
+            for layout_element in map_.layout.layout_elements:
+                for child in getattr(layout_element, "layout_elements", []):
+                    if type(child).__name__ == "CardinalityLayout":
+                        texts.append(child.label.text)
+            return sorted(texts)
+
+        assert cardinality_texts(map1) == ["2", "3"]
+
+        output_file = os.path.join(temp_dir, "stoichiometry_out.sbgn")
+        momapy.io.core.write(map1, output_file, writer="sbgnml-0.3")
+        with open(output_file, encoding="utf-8") as f:
+            output_text = f.read()
+        assert output_text.count('class="stoichiometry"') == 2
+
+        map2 = momapy.io.core.read(output_file, reader="sbgnml").obj
+        assert cardinality_texts(map2) == ["2", "3"]
+        assert map1 == map2

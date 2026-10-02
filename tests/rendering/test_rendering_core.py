@@ -180,3 +180,33 @@ def test_render_layout_elements_rejects_non_file_renderer(sample_map, temp_dir):
     finally:
         loaded = momapy.rendering.renderer_registry._loaded_plugins
         loaded.pop("test_non_file_renderer", None)
+
+
+def test_make_gradient_matrix_object_bounding_box():
+    """Box units map the unit square onto the box, then apply the transform."""
+    import numpy
+    import momapy.drawing
+    import momapy.geometry
+
+    bbox = momapy.geometry.Bbox(momapy.geometry.Point(20.0, 10.0), 20.0, 10.0)
+    gradient = momapy.drawing.LinearGradient(
+        gradient_transform=(momapy.geometry.Translation(0.5, 0.0),)
+    )
+    matrix = momapy.rendering.core.make_gradient_matrix(gradient, bbox)
+    point = numpy.matmul(matrix, numpy.array([0.5, 1.0, 1.0]))
+    assert point[0] == pytest.approx(30.0)
+    assert point[1] == pytest.approx(15.0)
+
+
+def test_make_gradient_matrix_user_space_on_use():
+    """User space units ignore the box."""
+    import numpy
+    import momapy.drawing
+    import momapy.geometry
+
+    bbox = momapy.geometry.Bbox(momapy.geometry.Point(20.0, 10.0), 20.0, 10.0)
+    gradient = momapy.drawing.LinearGradient(
+        gradient_units=momapy.drawing.GradientUnits.USER_SPACE_ON_USE
+    )
+    matrix = momapy.rendering.core.make_gradient_matrix(gradient, bbox)
+    assert numpy.allclose(matrix, numpy.identity(3))

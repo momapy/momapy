@@ -59,3 +59,29 @@ class TestSkiaRendering:
         assert None not in mapping
         effect = momapy.drawing.GaussianBlurEffect(std_deviation=2.0)
         assert mapping[effect.edge_mode] is skia.TileMode.kDecal
+
+    def test_render_gradients(self, gradient_rectangles, temp_dir):
+        """Rendering linear and radial gradient paints does not fail."""
+        import momapy.rendering.core
+
+        output_file = os.path.join(temp_dir, "gradients.png")
+        renderer_cls = momapy.rendering.core.get_renderer("skia")
+        renderer = renderer_cls.from_file(output_file, 100, 100, "png")
+        renderer.begin_session()
+        for rectangle in gradient_rectangles:
+            renderer.render_drawing_element(rectangle)
+        renderer.end_session()
+        assert os.path.getsize(output_file) > 0
+
+    def test_render_line_joins_and_caps(self, line_join_and_cap_paths, temp_dir):
+        """Rendering each line join and line cap does not fail."""
+        import momapy.rendering.core
+
+        output_file = os.path.join(temp_dir, "joins.png")
+        renderer_cls = momapy.rendering.core.get_renderer("skia")
+        renderer = renderer_cls.from_file(output_file, 100, 100, "png")
+        renderer.begin_session()
+        for path in line_join_and_cap_paths:
+            renderer.render_drawing_element(path)
+        renderer.end_session()
+        assert os.path.getsize(output_file) > 0

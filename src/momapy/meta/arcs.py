@@ -55,6 +55,7 @@ from momapy.coloring import Color
 from momapy.core.elements import Direction
 from momapy.core.layout import DoubleHeadedArc
 from momapy.core.layout import SingleHeadedArc
+from momapy.drawing import Gradient
 from momapy.drawing import DrawingElement
 from momapy.drawing import NoneValue
 from momapy.drawing import NoneValueType
@@ -257,7 +258,7 @@ class ArcBarb(SingleHeadedArc):
         default=10.0,
         metadata={"description": "The height of the arrowhead."},
     )
-    arrowhead_fill: NoneValueType | Color | None = NoneValue
+    arrowhead_fill: NoneValueType | Color | Gradient | None = NoneValue
 
     def _arrowhead_border_drawing_elements(self) -> list[DrawingElement]:
         shape = ArcBarbShape(
@@ -284,7 +285,7 @@ class StraightBarb(SingleHeadedArc):
         default=10.0,
         metadata={"description": "The height of the arrowhead."},
     )
-    arrowhead_fill: NoneValueType | Color | None = NoneValue
+    arrowhead_fill: NoneValueType | Color | Gradient | None = NoneValue
 
     def _arrowhead_border_drawing_elements(self) -> list[DrawingElement]:
         shape = StraightBarbShape(
@@ -311,7 +312,7 @@ class To(SingleHeadedArc):
         default=10.0,
         metadata={"description": "The height of the arrowhead."},
     )
-    arrowhead_fill: NoneValueType | Color | None = NoneValue
+    arrowhead_fill: NoneValueType | Color | Gradient | None = NoneValue
 
     def _arrowhead_border_drawing_elements(self) -> list[DrawingElement]:
         shape = ToShape(

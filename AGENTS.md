@@ -448,7 +448,16 @@ More complex than SBGN: model and layout often use different XML ID sources (e.g
 
 ## Plans
 
-Write implementation plans to `./plans/` as markdown files. Use descriptive filenames (e.g., `active_border_child_nodes.md`). Also write design debates to `./debates/`.
+Write implementation plans to `./workbench/plans/` as markdown files (never `./plans/`). Use descriptive filenames (e.g., `active_border_child_nodes.md`). Also write design debates to `./workbench/debates/`.
+
+### Issue backlog
+
+Issues are tracked with [Backlog.md](https://github.com/MrLesk/Backlog.md) (the `backlog` CLI), in `./workbench/backlog/` (config: `./backlog.config.yml`). Before working on an issue, run `backlog instructions overview` for the workflow, and always pass `--plain` (or `--json`) to `backlog` commands.
+
+- One task per issue; the task id matches the old issue number (`TASK-97` = issue 097). The task's Implementation Plan section holds the full plan.
+- Milestone `v1.0` (`m-0`) holds the issues that must land before the API freeze.
+- Labels: `api-breaking` / `api-maybe` for public-API impact; `styling`, `celldesigner`, `sbgnml`, `sbml`, `geometry`, `cli`, `rendering` for the area; `needs-decision` for issues without a chosen direction (kept as drafts).
+- Record new issues as tasks (`backlog task create`), not as files in `./workbench/plans/issues/`.
 
 ## DO / DON'T
 
