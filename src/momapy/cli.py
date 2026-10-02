@@ -755,7 +755,7 @@ _VISUALIZE_HTML_TEMPLATE = string.Template("""\
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/png" href="$favicon_data_uri">
+<link rel="icon" type="image/svg+xml" href="$favicon_data_uri">
 <title>$page_title</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1217,9 +1217,9 @@ def _visualize_map(
         page_title = "momapy visualize"
         toolbar_title = "momapy visualize"
     favicon_bytes = (
-        importlib.resources.files("momapy").joinpath("assets/favicon.png").read_bytes()
+        importlib.resources.files("momapy").joinpath("assets/favicon.svg").read_bytes()
     )
-    favicon_data_uri = "data:image/png;base64," + base64.b64encode(
+    favicon_data_uri = "data:image/svg+xml;base64," + base64.b64encode(
         favicon_bytes
     ).decode("ascii")
     html_content = _VISUALIZE_HTML_TEMPLATE.substitute(
