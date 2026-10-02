@@ -35,7 +35,7 @@ jobs:
           mkdocs-material-
     - name: Install MkDocs and dependencies
       run: |
-        pip install mkdocs-material griffe-fieldz mkdocstrings-python griffe-inherited-docstrings mkdocs-jupyter mkdocs-pygments mike
+        pip install mkdocs-material "mkdocs-shadcn>=0.12.1" griffe-fieldz mkdocstrings-python griffe-inherited-docstrings mkdocs-jupyter mkdocs-pygments mike
         pip install -e . --no-deps
         pip install frozendict numpy pyparsing colorama lxml uharfbuzz typing-extensions
 
