@@ -67,6 +67,9 @@ from momapy.sbgn.pd import TerminalLayout as PDTerminalLayout
 from momapy.sbgn.pd import UncertainProcessLayout as PDUncertainProcessLayout
 from momapy.sbgn.pd import UnitOfInformationLayout as PDUnitOfInformationLayout
 from momapy.sbgn.pd import UnspecifiedEntityLayout as PDUnspecifiedEntityLayout
+from momapy.sbgn.pd import (
+    UnspecifiedEntitySubunitLayout as PDUnspecifiedEntitySubunitLayout,
+)
 from momapy.sbgn.af import AndOperatorLayout as AFAndOperatorLayout
 from momapy.sbgn.af import BiologicalActivityLayout as AFBiologicalActivityLayout
 from momapy.sbgn.af import CompartmentLayout as AFCompartmentLayout
@@ -100,6 +103,7 @@ from momapy.sbgn.af import (
 from momapy.sbgn.af import SubmapLayout as AFSubmapLayout
 from momapy.sbgn.af import TagLayout as AFTagLayout
 from momapy.sbgn.af import TerminalLayout as AFTerminalLayout
+from momapy.sbgn.af import UnitOfInformationLayout as AFUnitOfInformationLayout
 from momapy.sbgn.af import UnknownInfluenceLayout as AFUnknownInfluenceLayout
 from momapy.sbgn.af import (
     UnspecifiedEntityUnitOfInformationLayout as AFUnspecifiedEntityUnitOfInformationLayout,
@@ -115,6 +119,7 @@ CLASS_TO_SBGNML_CLASS = {
     PDStateVariableLayout: "state variable",
     PDUnitOfInformationLayout: "unit of information",
     PDTerminalLayout: "terminal",
+    PDUnspecifiedEntitySubunitLayout: "unspecified entity",
     PDMacromoleculeSubunitLayout: "macromolecule",
     PDSimpleChemicalSubunitLayout: "simple chemical",
     PDNucleicAcidFeatureSubunitLayout: "nucleic acid feature",
@@ -159,6 +164,7 @@ CLASS_TO_SBGNML_CLASS = {
     AFCompartmentLayout: "compartment",
     AFSubmapLayout: "submap",
     AFBiologicalActivityLayout: "biological activity",
+    AFUnitOfInformationLayout: "unit of information",
     AFUnspecifiedEntityUnitOfInformationLayout: "unit of information",
     AFMacromoleculeUnitOfInformationLayout: "unit of information",
     AFSimpleChemicalUnitOfInformationLayout: "unit of information",
