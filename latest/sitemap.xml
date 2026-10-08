@@ -2,110 +2,110 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/CHANGELOG/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/about/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/cli/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/styling/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/builder/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/coloring/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/core/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/drawing/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/geometry/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/io/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/positioning/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/styling/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/celldesigner/celldesigner/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/celldesigner/io/celldesigner/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/rendering/cairo/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/rendering/core/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/rendering/skia/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/rendering/svg_native/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/sbgn/af/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/sbgn/pd/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/sbgn/sbgn/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/sbgn/io/sbgnml/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/sbml/sbml/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/api_reference/sbml/io/sbml/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://adrienrougny.github.io/momapy/latest/user_manual/main/</loc>
-         <lastmod>2026-10-02</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
 </urlset>
