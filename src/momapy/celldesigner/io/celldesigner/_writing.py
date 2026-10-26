@@ -2336,6 +2336,7 @@ def collect_complex_aliases(
                     complex_alias_id=parent_alias_id,
                 )
             )
+        target_alias_id = get_alias_id(writing_context, target_layout)
         children_in_layout = set(target_layout.layout_elements)
         for subunit in target_complex.subunits:
             if isinstance(subunit, Complex):
@@ -2359,7 +2360,7 @@ def collect_complex_aliases(
                             child_layout,
                             subunit,
                             "speciesAlias",
-                            complex_alias_id=target_layout.id_,
+                            complex_alias_id=target_alias_id,
                         )
                     )
 

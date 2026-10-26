@@ -166,6 +166,34 @@ class TestNestedComplexAliasChaining:
         assert nested_aliases[0].get("complexSpeciesAlias") == outer_layout.id_
 
 
+class TestComplexMemberAliasLink:
+    """A complex member references the written id of its complex alias."""
+
+    def test_member_references_written_complex_alias(self, neuro_map, tmp_path):
+        target_complex, _, _ = _find_complex_with_non_complex_subunit(neuro_map)
+        target_layout = _find_outer_layout(neuro_map, target_complex)
+        cache: dict = {}
+        map_builder = momapy.builder.builder_from_object(
+            neuro_map, object_to_builder=cache
+        )
+        cache[id(target_layout)].id_ = "complex-1"
+        new_map = momapy.builder.object_from_builder(map_builder)
+        out_file = tmp_path / "member_link.xml"
+        momapy.io.core.write(new_map, out_file, writer="celldesigner")
+        root = lxml.etree.parse(str(out_file)).getroot()
+        complex_alias_ids = {
+            element.get("id")
+            for element in root.iter(f"{{{_CD_NS}}}complexSpeciesAlias")
+        }
+        member_links = [
+            element.get("complexSpeciesAlias")
+            for element in root.iter(f"{{{_CD_NS}}}speciesAlias")
+            if element.get("complexSpeciesAlias") is not None
+        ]
+        assert "complex_1" in member_links
+        assert set(member_links) <= complex_alias_ids
+
+
 class TestModificationStateString:
     """Regression tests for ``modification_state_string``."""
 
