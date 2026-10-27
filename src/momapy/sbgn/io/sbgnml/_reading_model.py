@@ -5,6 +5,7 @@ argument, checks whether ``reading_context.model`` is ``None``, and
 returns ``None`` early when no model is being built.
 """
 
+import dataclasses
 import typing
 
 from momapy.builder import new_builder_object
@@ -469,6 +470,46 @@ def make_product(
     set_stoichiometry(model_element, sbgnml_stoichiometry)
     model_element = object_from_builder(model_element)
     return model_element
+
+
+def merge_participants(
+    participants: list["ModelElement"],
+) -> list["ModelElement"]:
+    """Merge the participants of one process that draw the same participation.
+
+    Participants of the same class that refer to equal elements become one
+    participant, built from the one with the smallest `id_`, whose
+    stoichiometry is the sum of theirs (a participant with no stoichiometry
+    counts as 1). A participant alone in its group is kept as is.
+
+    Args:
+        participants: The frozen participants of the process.
+
+    Returns:
+        The merged participant of each participant, in the same order.
+    """
+    groups = {}
+    for participant in participants:
+        groups.setdefault((type(participant), participant.referred_element), []).append(
+            participant
+        )
+    merged_participants = {}
+    for group in groups.values():
+        if len(group) == 1:
+            merged_participant = group[0]
+        else:
+            merged_participant = dataclasses.replace(
+                min(group, key=lambda participant: participant.id_),
+                stoichiometry=sum(
+                    participant.stoichiometry
+                    if participant.stoichiometry is not None
+                    else 1.0
+                    for participant in group
+                ),
+            )
+        for participant in group:
+            merged_participants[id(participant)] = merged_participant
+    return [merged_participants[id(participant)] for participant in participants]
 
 
 def make_logical_operator(

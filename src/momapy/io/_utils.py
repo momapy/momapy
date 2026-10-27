@@ -13,11 +13,17 @@ import typing
 import frozendict
 import lxml.etree
 
+from momapy.core._assembling import ClusterRule
+from momapy.core._assembling import check_layout_element_identities
+from momapy.core._assembling import deduplicate_model_elements
+from momapy.core._assembling import make_layout_model_mapping
+from momapy.core._assembling import match_descendants
 from momapy.core.elements import LayoutElement
 from momapy.core.elements import MapElement
 from momapy.core.elements import ModelElement
 from momapy.core.layout import Layout
 from momapy.core.map import Map
+from momapy.core.mapping import LayoutModelMapping
 from momapy.core.model import Model
 from momapy.geometry import Point
 from momapy.utils import FrozenIdentityMultiDict
@@ -25,6 +31,7 @@ from momapy.utils import FrozenSurjectionDict
 from momapy.utils import IdentityMultiDict
 from momapy.utils import IdentitySurjectionDict
 from momapy.utils import add_or_replace_element_in_set
+from momapy.utils import get_element_from_collection
 
 
 # Everything here (context dataclasses, ID-remapping helpers) is internal and
@@ -231,6 +238,22 @@ class ReadingContext:
     evicted_elements: dict[int, ModelElement] = dataclasses.field(default_factory=dict)
     """Maps id(evicted_object) -> evicted_object.  Keeps evicted objects
     alive to prevent Python from reusing their memory address."""
+    layout_element_to_model_element: dict[LayoutElement, ModelElement] = (
+        dataclasses.field(default_factory=dict)
+    )
+    """Maps each single layout element to the model element it draws; the
+    frozenset keys of the mapping are computed from it at the end of reading."""
+    top_level_model_elements: list[ModelElement] = dataclasses.field(
+        default_factory=list
+    )
+    """Top-level model elements in reading order, before deduplication."""
+    model_element_replacements: dict[int, ModelElement] = dataclasses.field(
+        default_factory=dict
+    )
+    """Maps the id() of a dropped child (or descendant of a dropped child) to
+    the equal element its owner holds instead."""
+    dropped_model_elements: list[ModelElement] = dataclasses.field(default_factory=list)
+    """Dropped children, kept alive so that their id() is not reused."""
 
 
 def get_xml_root_element(
@@ -553,3 +576,159 @@ def register_model_element(
         )
         remap_model_element(reading_context, evicted_element, surviving_element)
     return surviving_element
+
+
+def add_top_level_model_element(
+    reading_context: ReadingContext,
+    model_element: ModelElement,
+    xml_id: str,
+) -> ModelElement:
+    """Record a top-level model element read from an XML element.
+
+    Equal top-level elements are merged at the end of reading, by
+    `assemble_model_and_layout_model_mapping`.
+
+    Args:
+        reading_context: The reading context.
+        model_element: The top-level model element.
+        xml_id: The id of the XML element it is read from.
+
+    Returns:
+        The model element.
+    """
+    reading_context.top_level_model_elements.append(model_element)
+    reading_context.xml_id_to_model_element.add(xml_id, model_element)
+    return model_element
+
+
+def add_child_model_element(
+    reading_context: ReadingContext,
+    child: ModelElement,
+    collection: set,
+) -> ModelElement:
+    """Add a child model element to a collection of its owner.
+
+    If the collection already holds an equal child, the one with the
+    smallest `id_` is kept, and the dropped one and its descendants are
+    recorded as replaced by the kept one and its descendants.
+
+    Args:
+        reading_context: The reading context.
+        child: The child to add.
+        collection: The collection of the owner (a set of a builder).
+
+    Returns:
+        The child the collection holds.
+    """
+    held_child = get_element_from_collection(child, collection)
+    kept_child = add_or_replace_element_in_set(
+        child, collection, func=lambda new, old: new.id_ < old.id_
+    )
+    if held_child is not None:
+        dropped_child = held_child if kept_child is child else child
+        reading_context.dropped_model_elements.append(dropped_child)
+        reading_context.model_element_replacements.update(
+            match_descendants(dropped_child, kept_child)
+        )
+    return kept_child
+
+
+def resolve_model_element_replacement(
+    reading_context: ReadingContext, model_element: ModelElement
+) -> ModelElement:
+    """Return the element that replaces a dropped child, or the element itself.
+
+    Args:
+        reading_context: The reading context.
+        model_element: The model element.
+
+    Returns:
+        The kept element.
+    """
+    while id(model_element) in reading_context.model_element_replacements:
+        model_element = reading_context.model_element_replacements[id(model_element)]
+    return model_element
+
+
+def replace_xml_id_to_model_element_values(
+    reading_context: ReadingContext,
+    get_new_model_element: typing.Callable[[ModelElement], ModelElement | None],
+) -> None:
+    """Replace the model elements of `xml_id_to_model_element`.
+
+    Args:
+        reading_context: The reading context.
+        get_new_model_element: The function giving the replacement of a model
+            element, or `None` to keep it.
+    """
+    model_elements = {
+        id(model_element): model_element
+        for bucket in reading_context.xml_id_to_model_element.values()
+        for model_element in bucket
+    }
+    for model_element in model_elements.values():
+        new_model_element = get_new_model_element(model_element)
+        if new_model_element is not None and new_model_element is not model_element:
+            reading_context.xml_id_to_model_element.replace_value(
+                model_element, new_model_element
+            )
+
+
+def assemble_model_and_layout_model_mapping(
+    reading_context: ReadingContext,
+    collection_table: dict[type, str],
+    cluster_rules: typing.Iterable[ClusterRule],
+) -> LayoutModelMapping | None:
+    """Fill the model and compute the layout-model mapping at the end of reading.
+
+    Equal top-level model elements are merged, the model collections are
+    filled, and `xml_id_to_model_element` is updated with the kept elements.
+
+    Args:
+        reading_context: The reading context, whose model is not `None`.
+        collection_table: The table mapping model element classes to
+            collection names.
+        cluster_rules: The rules to compute the frozenset keys, in order.
+
+    Returns:
+        The layout-model mapping, or `None` if no layout is read.
+    """
+    replace_xml_id_to_model_element_values(
+        reading_context,
+        lambda model_element: resolve_model_element_replacement(
+            reading_context, model_element
+        ),
+    )
+    layout_element_to_model_element = {
+        layout_element: resolve_model_element_replacement(
+            reading_context, model_element
+        )
+        for layout_element, model_element in (
+            reading_context.layout_element_to_model_element.items()
+        )
+    }
+    collection_elements, kept_elements = deduplicate_model_elements(
+        reading_context.top_level_model_elements,
+        layout_element_to_model_element.values(),
+        collection_table,
+    )
+    for collection_name, elements in collection_elements.items():
+        getattr(reading_context.model, collection_name).update(elements)
+    replace_xml_id_to_model_element_values(
+        reading_context,
+        lambda model_element: kept_elements.get(id(model_element)),
+    )
+    if reading_context.layout is None:
+        return None
+    layout_element_to_model_element = {
+        layout_element: kept_elements[id(model_element)]
+        for layout_element, model_element in layout_element_to_model_element.items()
+    }
+    check_layout_element_identities(
+        reading_context.layout.layout_elements, layout_element_to_model_element
+    )
+    return make_layout_model_mapping(
+        reading_context.layout.layout_elements,
+        layout_element_to_model_element,
+        cluster_rules,
+    )

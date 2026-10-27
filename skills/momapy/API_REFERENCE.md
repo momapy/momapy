@@ -162,7 +162,12 @@ Purpose: reader-side helpers; shared base contexts. Wholly internal (`__all__ = 
 - `get_xml_root_element(file_path) -> lxml.etree._Element | None` — root element of an XML file, parsing only its start (no entity resolution, no network); `None` if the file is unreadable or not XML. Used by the XML readers' `check_file` to detect a format from the root element.
 - `build_id_to_element(obj) -> frozendict` — context-free `id_to_element` walk over a `Map`/`Model`/`Layout` (every element `id_` -> element). Used by `build_id_mappings` and by the pickle reader (which has no reading context).
 - `build_id_mappings(reading_context, obj, real_model_source_ids=None, real_layout_source_ids=None) -> (frozendict, FrozenIdentityMultiDict|None, FrozenSurjectionDict|None)` — builds the `ReaderResult` id dicts. Dispatches `obj` internally: `Map` → uses its `.model`/`.layout`; `Model`/`Layout` → treated as the model/layout itself. `id_to_element` comes from `build_id_to_element`.
-- `register_model_element(reading_context, model_element, collection, id_)` (the `id_` is required) and related remap helpers (`remap_model_element`, `resolve_remap`, `apply_remap_to_layout_model_mapping`).
+- `register_model_element(reading_context, model_element, collection, id_)` (the `id_` is required) and related remap helpers, used by the CellDesigner reader (`remap_model_element`, `resolve_remap`, `apply_remap_to_layout_model_mapping`).
+- `ReadingContext` fields for the shared map-element code: `layout_element_to_model_element` (single layout element -> model element), `top_level_model_elements` (in reading order, before deduplication), `model_element_replacements` (`id()` of a dropped child or descendant -> kept element), `dropped_model_elements` (keeps them alive).
+- `add_top_level_model_element(reading_context, model_element, xml_id) -> ModelElement`: records a top-level element and its xml id; equal ones are merged at the end of reading.
+- `add_child_model_element(reading_context, child, collection) -> ModelElement`: adds a child to its owner's builder set; of equal children the smallest `id_` is kept and the dropped one's descendants are recorded as replaced (`match_descendants`).
+- `resolve_model_element_replacement(reading_context, model_element) -> ModelElement`, `replace_xml_id_to_model_element_values(reading_context, get_new_model_element)`.
+- `assemble_model_and_layout_model_mapping(reading_context, collection_table, cluster_rules) -> LayoutModelMapping | None`: end of reading: resolves child replacements, merges equal top-level elements (`momapy.core._assembling.deduplicate_model_elements`), fills the model builder's collections, updates `xml_id_to_model_element`, and computes the mapping (`None` without layout). Used by the SBGN-ML reader.
 
 ### `src/momapy/io/pickle.py`
 Purpose: format-agnostic pickle reader/writer. Registered as `"pickle"` in `momapy.io`.
@@ -333,6 +338,7 @@ Purpose: SBGN-AF model classes.
 - `make_activity(reading_context, sbgnml_activity, model_element_cls)`
 - `make_state_variable(reading_context, sbgnml_state_variable, order=None)`
 - `make_unit_of_information(reading_context, sbgnml_unit_of_information, model_element_cls)`
+- `merge_participants(participants) -> list[ModelElement]`: for each participant of one process, the participant of its group (same class, equal referred element); a group of several becomes one participant, built from the smallest `id_`, with the summed stoichiometry (none counts as 1).
 - (+ ~15 more for processes, flux roles, logical operators, modulations, tags, terminals, submaps, AF influences)
 
 ### `src/momapy/sbgn/io/sbgnml/_reading_layout.py` (`make_*`)

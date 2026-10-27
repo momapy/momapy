@@ -584,3 +584,120 @@ class TestAFReading:
         ]
         for element in model_elements + map_.layout.descendants():
             assert not type(element).__module__.startswith("momapy.sbgn.pd")
+
+
+_CLONE_REACTANTS_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="clone_reactants">
+        <glyph id="glyph_a" class="macromolecule">
+            <label text="A"/>
+            <bbox y="40.0" x="100.0" h="60.0" w="120.0"/>
+            <glyph id="glyph_a_clone" class="clone marker"/>
+        </glyph>
+        <glyph id="glyph_a_copy" class="macromolecule">
+            <label text="A"/>
+            <bbox y="160.0" x="100.0" h="60.0" w="120.0"/>
+            <glyph id="glyph_a_copy_clone" class="clone marker"/>
+        </glyph>
+        <glyph id="glyph_b" class="macromolecule">
+            <label text="B"/>
+            <bbox y="100.0" x="400.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="process" class="process">
+            <bbox y="120.0" x="300.0" h="20.0" w="20.0"/>
+            <port id="process.1" y="130.0" x="290.0"/>
+            <port id="process.2" y="130.0" x="330.0"/>
+        </glyph>
+        <arc id="arc_a" target="process.1" source="glyph_a" class="consumption">
+            <start y="70.0" x="220.0"/>
+            <end y="130.0" x="290.0"/>
+        </arc>
+        <arc id="arc_a_copy" target="process.1" source="glyph_a_copy" class="consumption">
+            <start y="190.0" x="220.0"/>
+            <end y="130.0" x="290.0"/>
+        </arc>
+        <arc id="arc_b" target="glyph_b" source="process.2" class="production">
+            <start y="130.0" x="330.0"/>
+            <end y="130.0" x="400.0"/>
+        </arc>
+    </map>
+</sbgn>
+"""
+
+_EQUAL_SUBUNITS_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="equal_subunits">
+        <glyph id="complex" class="complex">
+            <label text="C"/>
+            <bbox y="100.0" x="100.0" h="120.0" w="300.0"/>
+            <glyph id="subunit_1" class="macromolecule">
+                <label text="A"/>
+                <bbox y="130.0" x="120.0" h="60.0" w="120.0"/>
+                <glyph id="state_variable_1" class="state variable">
+                    <state value="P"/>
+                    <bbox y="122.0" x="130.0" h="16.0" w="20.0"/>
+                </glyph>
+            </glyph>
+            <glyph id="subunit_2" class="macromolecule">
+                <label text="A"/>
+                <bbox y="130.0" x="260.0" h="60.0" w="120.0"/>
+                <glyph id="state_variable_2" class="state variable">
+                    <state value="P"/>
+                    <bbox y="122.0" x="270.0" h="16.0" w="20.0"/>
+                </glyph>
+            </glyph>
+        </glyph>
+    </map>
+</sbgn>
+"""
+
+
+class TestEqualChildren:
+    """Equal children of one owner are one model element drawn several times."""
+
+    def write(self, tmp_path, name, text):
+        path = tmp_path / name
+        path.write_text(text)
+        return str(path)
+
+    def test_clone_reactants_are_one_reactant(self, tmp_path):
+        path = self.write(tmp_path, "clone_reactants.sbgn", _CLONE_REACTANTS_SBGN)
+        map_ = momapy.io.core.read(path).obj
+        process = next(iter(map_.model.processes))
+        assert len(process.reactants) == 1
+        reactant = next(iter(process.reactants))
+        assert reactant.stoichiometry == 2
+        arc_ids = {
+            layout_element.id_
+            for layout_element in map_.layout_model_mapping.get_child_layout_elements(
+                reactant, process
+            )
+        }
+        assert arc_ids == {"arc_a", "arc_a_copy"}
+        output_path = str(tmp_path / "clone_reactants_written.sbgn")
+        momapy.io.core.write(map_, output_path)
+        map_again = momapy.io.core.read(output_path).obj
+        process_again = next(iter(map_again.model.processes))
+        assert next(iter(process_again.reactants)).stoichiometry == 2
+
+    def test_equal_subunits_are_one_subunit(self, tmp_path):
+        path = self.write(tmp_path, "equal_subunits.sbgn", _EQUAL_SUBUNITS_SBGN)
+        map_ = momapy.io.core.read(path).obj
+        mapping = map_.layout_model_mapping
+        complex_ = next(iter(map_.model.entity_pools))
+        assert len(complex_.subunits) == 1
+        subunit = next(iter(complex_.subunits))
+        assert len(subunit.state_variables) == 1
+        state_variable = next(iter(subunit.state_variables))
+        assert {
+            layout_element.id_
+            for layout_element in mapping.get_child_layout_elements(subunit, complex_)
+        } == {"subunit_1", "subunit_2"}
+        assert {
+            layout_element.id_
+            for layout_element in mapping.get_child_layout_elements(
+                state_variable, subunit
+            )
+        } == {"state_variable_1", "state_variable_2"}
