@@ -7,6 +7,8 @@ This section lists, for each model-element category in SBGN-AF, the shape
 of the corresponding key in [LayoutModelMapping][momapy.core.LayoutModelMapping].
 See [LayoutModelMapping][momapy.core.LayoutModelMapping] for the general concepts
 (singleton keys, frozenset keys, representatives).
+The keys can be computed from a plain ``{layout_element: model_element}``
+dict by ``momapy.sbgn.utils.make_af_map_from_map_elements``.
 
 Singleton keys (one layout element represents the model element):
 

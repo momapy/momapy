@@ -121,7 +121,7 @@ xml_id = original_ids[0] if original_ids else generate_new_id()
 
 Related surjection helpers — both live in `momapy.utils`:
 
-- **`SurjectionDict`** — the mutable equivalent, used inside the builder for `LayoutModelMapping._singleton_to_key` (the anchor → frozenset lookup). `.inverse` is rebuilt incrementally on every mutation.
+- **`SurjectionDict`** — the mutable equivalent, used inside the builder for `LayoutModelMapping.representative_to_key` (the representative → frozenset lookup). `.inverse` is rebuilt incrementally on every mutation.
 - **`IdentitySurjectionDict`** — identity-keyed variant; the inverse is keyed by `id(value)` so distinct objects that compare equal are kept distinct. Used internally by reading contexts (`xml_id_to_model_element`, `model_element_remap`) to avoid conflating model-element-equal-but-not-identical duplicates.
 
 You will normally only touch `FrozenSurjectionDict` on a `ReaderResult`. The other two are implementation details of the reader and builder.
@@ -209,13 +209,35 @@ write(map_, "tinted.sbgn", writer="sbgnml")
 
 ### Adding a new element
 
+The easy way, for SBGN maps, is to take the map apart, add the new elements, and build it again: `momapy.sbgn.utils.make_pd_map_from_map_elements` (or `make_af_map_from_map_elements`) computes the model collections and every frozenset key from a plain `{layout_element: model_element}` dict, and `get_map_elements_from_pd_map(map_)` gives the parts of an existing map:
+
+```python
+from momapy.sbgn.utils import get_map_elements_from_pd_map, make_pd_map_from_map_elements
+
+layout_elements, layout_element_to_model_element, model_elements = get_map_elements_from_pd_map(map_)
+# process_glyph: an element of layout_elements; arc ends must be the layout's own objects
+enzyme_glyph = MacromoleculeLayout(position=Point(100, 50), width=60, height=30)
+catalysis_arc = CatalysisLayout(source=enzyme_glyph, target=process_glyph, segments=(...))
+enzyme = Macromolecule(label="E")
+catalysis = Catalysis(source=enzyme, target=layout_element_to_model_element[process_glyph])
+new_map = make_pd_map_from_map_elements(
+    layout_elements + (enzyme_glyph, catalysis_arc),
+    layout_element_to_model_element | {enzyme_glyph: enzyme, catalysis_arc: catalysis},
+    model_elements,
+)
+```
+
+`enzyme` is added to `entity_pools` and `catalysis` to `modulations` without being listed. A model element that is changed (e.g. a process with a new reactant) is a new object: replace the old one everywhere it appears in the dict and in `model_elements`. `merge_pd_maps(maps)` merges whole maps.
+
+By hand, with builders:
+
 1. Build the model element (`object_from_builder(new_builder_object(<ModelClass>, …))`).
 2. Add it to the appropriate model collection on the builder (`map_builder.model.entity_pools.add(...)`).
 3. Build the layout element similarly and add it to a parent `layout_elements`'.
 4. Register the link in the mapping: `map_builder.layout_model_mapping.add_mapping(layout_element, model_element)`.
-5. When a model element is represented by a **cluster** of layout elements — a process plus its participant arcs and targets, a modulation arc with its source and target clusters, a logical operator and its inputs, a tag or terminal with its reference arcs — the key is a `frozenset` of those layouts. Pass `anchor=<layout_element>` to designate the element that stands for the cluster on its own (the process glyph for a process, the modulation arc for a modulation, the operator glyph for a logical operator, the tag glyph for a tag); `get_mapping(anchor)` then resolves back to the model element, and other composite keys can reference the cluster by its anchor.
+5. When a model element is represented by a **cluster** of layout elements — a process plus its participant arcs and targets, a modulation arc with its source and target clusters, a logical operator and its inputs, a tag or terminal with its reference arcs — the key is a `frozenset` of those layouts. Pass `representative=<layout_element>` to designate the element that stands for the cluster on its own (the process glyph for a process, the modulation arc for a modulation, the operator glyph for a logical operator, the tag glyph for a tag); `get_mapping(representative)` then resolves back to the model element, and other composite keys can reference the cluster by its representative.
 
-   The exact key shape and anchor for each model element type is documented at the top of each format's module: see the "Layout-model mapping catalogue" section in `momapy.sbgn.pd`, `momapy.sbgn.af`, and `momapy.celldesigner.model`.
+   The exact key shape and representative for each model element type is documented at the top of each format's module: see the "Layout-model mapping catalogue" section in `momapy.sbgn.pd`, `momapy.sbgn.af`, and `momapy.celldesigner.model`.
 
 ---
 

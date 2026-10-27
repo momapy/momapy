@@ -1,5 +1,6 @@
 """Tests for momapy.sbgn.utils — SBGN map layout utility functions."""
 
+import dataclasses
 import os
 
 import pytest
@@ -10,7 +11,9 @@ import momapy.sbgn
 import momapy.sbgn.pd
 import momapy.sbgn.af
 import momapy.sbgn.utils
+import momapy.core._assembling
 import momapy.core.layout
+import momapy.geometry
 
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -308,3 +311,642 @@ class TestNonCrash:
 
     def test_newt_tidy(self, pd_map):
         momapy.sbgn.utils.newt_tidy(pd_map)
+
+
+# ---------------------------------------------------------------------------
+# Building, taking apart and merging maps from map elements
+# ---------------------------------------------------------------------------
+
+AF_MAPS_DIR = os.path.join(TEST_DIR, "maps", "af")
+
+
+def make_glyph(x, y=0.0, cls=momapy.sbgn.pd.MacromoleculeLayout, layout_elements=()):
+    return cls(
+        position=momapy.geometry.Point(x, y),
+        width=60.0,
+        height=30.0,
+        layout_elements=tuple(layout_elements),
+    )
+
+
+def make_process_layout(x, y=0.0):
+    return momapy.sbgn.pd.GenericProcessLayout(
+        position=momapy.geometry.Point(x, y), width=20.0, height=20.0
+    )
+
+
+def make_arc(cls, source, target):
+    return cls(
+        source=source,
+        target=target,
+        segments=(momapy.geometry.Segment(source.position, target.position),),
+    )
+
+
+def get_model_descendant_ids(model):
+    return {
+        id(descendant)
+        for element in momapy.core._assembling.get_map_elements_from_map(
+            momapy.sbgn.pd.SBGNPDMap(model=model)
+        )[2]
+        for descendant in momapy.core._assembling.get_descendants(element)
+    }
+
+
+def make_simple_process_map_elements():
+    """Return the elements of `A -> B` catalysed by `E`."""
+    a = momapy.sbgn.pd.Macromolecule(label="A")
+    b = momapy.sbgn.pd.Macromolecule(label="B")
+    e = momapy.sbgn.pd.Macromolecule(label="E")
+    reactant = momapy.sbgn.pd.Reactant(referred_element=a)
+    product = momapy.sbgn.pd.Product(referred_element=b)
+    process = momapy.sbgn.pd.GenericProcess(
+        reactants=frozenset([reactant]), products=frozenset([product])
+    )
+    catalysis = momapy.sbgn.pd.Catalysis(source=e, target=process)
+    a_layout = make_glyph(0.0)
+    b_layout = make_glyph(200.0)
+    e_layout = make_glyph(100.0, 100.0)
+    process_layout = make_process_layout(100.0)
+    consumption_layout = make_arc(
+        momapy.sbgn.pd.ConsumptionLayout, process_layout, a_layout
+    )
+    production_layout = make_arc(
+        momapy.sbgn.pd.ProductionLayout, process_layout, b_layout
+    )
+    catalysis_layout = make_arc(
+        momapy.sbgn.pd.CatalysisLayout, e_layout, process_layout
+    )
+    layout_elements = [
+        a_layout,
+        b_layout,
+        e_layout,
+        process_layout,
+        consumption_layout,
+        production_layout,
+        catalysis_layout,
+    ]
+    layout_element_to_model_element = {
+        a_layout: a,
+        b_layout: b,
+        e_layout: e,
+        process_layout: process,
+        consumption_layout: reactant,
+        production_layout: product,
+        catalysis_layout: catalysis,
+    }
+    return layout_elements, layout_element_to_model_element
+
+
+class TestMakeMapFromMapElements:
+    @pytest.mark.parametrize(
+        "path, make_function, get_function",
+        [
+            (
+                os.path.join(SBGN_MAPS_DIR, file_name),
+                momapy.sbgn.utils.make_pd_map_from_map_elements,
+                momapy.sbgn.utils.get_map_elements_from_pd_map,
+            )
+            for file_name in SBGN_FILES
+        ]
+        + [
+            (
+                os.path.join(AF_MAPS_DIR, "small_activity_flow.sbgn"),
+                momapy.sbgn.utils.make_af_map_from_map_elements,
+                momapy.sbgn.utils.get_map_elements_from_af_map,
+            )
+        ],
+    )
+    def test_rebuild_read_map(self, path, make_function, get_function):
+        map_ = momapy.io.core.read(path).obj
+        rebuilt_map = make_function(*get_function(map_))
+        assert rebuilt_map.model == map_.model
+        assert rebuilt_map.layout.layout_elements == map_.layout.layout_elements
+        assert dict(rebuilt_map.layout_model_mapping) == dict(map_.layout_model_mapping)
+        assert dict(rebuilt_map.layout_model_mapping.representative_to_key) == dict(
+            map_.layout_model_mapping.representative_to_key
+        )
+        model_descendant_ids = get_model_descendant_ids(rebuilt_map.model)
+        for model_element in rebuilt_map.layout_model_mapping.values():
+            assert id(model_element) in model_descendant_ids
+
+    def test_process_key(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            layout_elements, layout_element_to_model_element
+        )
+        (
+            a_layout,
+            b_layout,
+            e_layout,
+            process_layout,
+            consumption_layout,
+            production_layout,
+            catalysis_layout,
+        ) = layout_elements
+        process_key = frozenset(
+            [process_layout, consumption_layout, production_layout, a_layout, b_layout]
+        )
+        mapping = map_.layout_model_mapping
+        assert mapping.representative_to_key[process_layout] == process_key
+        assert (
+            mapping.representative_to_key[catalysis_layout]
+            == frozenset([catalysis_layout, e_layout]) | process_key
+        )
+        assert mapping[process_key] is next(iter(map_.model.processes))
+
+    def test_missing_elements_are_added(self):
+        compartment = momapy.sbgn.pd.Compartment(label="cell")
+        a = momapy.sbgn.pd.Macromolecule(label="A", compartment=compartment)
+        b = momapy.sbgn.pd.Macromolecule(label="B")
+        reactant = momapy.sbgn.pd.Reactant(referred_element=a)
+        product = momapy.sbgn.pd.Product(referred_element=b)
+        process = momapy.sbgn.pd.GenericProcess(
+            reactants=frozenset([reactant]), products=frozenset([product])
+        )
+        process_layout = make_process_layout(100.0)
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [process_layout], {process_layout: process}
+        )
+        assert map_.model.entity_pools == frozenset([a, b])
+        assert map_.model.compartments == frozenset([compartment])
+        assert map_.model.processes == frozenset([process])
+
+    def test_equal_model_elements_become_one(self):
+        atp = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="atp")
+        atp2 = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="atp2")
+        reactant = momapy.sbgn.pd.Reactant(referred_element=atp2)
+        process = momapy.sbgn.pd.GenericProcess(reactants=frozenset([reactant]))
+        atp_layout = make_glyph(0.0, cls=momapy.sbgn.pd.SimpleChemicalLayout)
+        atp2_layout = make_glyph(0.0, 100.0, cls=momapy.sbgn.pd.SimpleChemicalLayout)
+        process_layout = make_process_layout(100.0, 100.0)
+        consumption_layout = make_arc(
+            momapy.sbgn.pd.ConsumptionLayout, process_layout, atp2_layout
+        )
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [atp_layout, atp2_layout, process_layout, consumption_layout],
+            {
+                atp_layout: atp,
+                atp2_layout: atp2,
+                process_layout: process,
+                consumption_layout: reactant,
+            },
+            [atp],
+        )
+        kept_atp = next(iter(map_.model.entity_pools))
+        assert len(map_.model.entity_pools) == 1
+        assert kept_atp.id_ == "atp"
+        kept_process = next(iter(map_.model.processes))
+        assert next(iter(kept_process.reactants)).referred_element is kept_atp
+        assert set(map_.layout_model_mapping.get_mapping(kept_atp)) == {
+            atp_layout,
+            atp2_layout,
+        }
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_survivor_has_smallest_id(self, reverse):
+        atp = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="b")
+        atp2 = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="a")
+        model_elements = [atp, atp2]
+        if reverse:
+            model_elements.reverse()
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            model_elements=model_elements
+        )
+        assert next(iter(map_.model.entity_pools)) is atp2
+
+    def test_survivor_on_equal_ids_is_first_seen(self):
+        atp = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="a")
+        atp2 = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="a")
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            model_elements=[atp2, atp]
+        )
+        assert next(iter(map_.model.entity_pools)) is atp2
+
+    def test_equal_state_variables_of_different_owners_are_kept(self):
+        a_state_variable = momapy.sbgn.pd.StateVariable(value="P")
+        b_state_variable = momapy.sbgn.pd.StateVariable(value="P")
+        a = momapy.sbgn.pd.Macromolecule(
+            label="A", state_variables=frozenset([a_state_variable])
+        )
+        b = momapy.sbgn.pd.Macromolecule(
+            label="B", state_variables=frozenset([b_state_variable])
+        )
+        a_state_variable_layout = make_glyph(
+            0.0, -15.0, cls=momapy.sbgn.pd.StateVariableLayout
+        )
+        b_state_variable_layout = make_glyph(
+            200.0, -15.0, cls=momapy.sbgn.pd.StateVariableLayout
+        )
+        a_layout = make_glyph(0.0, layout_elements=[a_state_variable_layout])
+        b_layout = make_glyph(200.0, layout_elements=[b_state_variable_layout])
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [a_layout, b_layout],
+            {
+                a_layout: a,
+                b_layout: b,
+                a_state_variable_layout: a_state_variable,
+                b_state_variable_layout: b_state_variable,
+            },
+        )
+        mapping = map_.layout_model_mapping
+        kept_a = mapping[a_layout]
+        kept_b = mapping[b_layout]
+        assert mapping[a_state_variable_layout] is next(iter(kept_a.state_variables))
+        assert mapping[b_state_variable_layout] is next(iter(kept_b.state_variables))
+        assert mapping[a_state_variable_layout] is not mapping[b_state_variable_layout]
+
+    def test_clone_glyphs_consumed_twice(self):
+        a = momapy.sbgn.pd.Macromolecule(label="A")
+        b = momapy.sbgn.pd.Macromolecule(label="B")
+        reactant = momapy.sbgn.pd.Reactant(referred_element=a, stoichiometry=2)
+        product = momapy.sbgn.pd.Product(referred_element=b)
+        process = momapy.sbgn.pd.GenericProcess(
+            reactants=frozenset([reactant]), products=frozenset([product])
+        )
+        a_layout = make_glyph(0.0)
+        a_clone_layout = make_glyph(0.0, 100.0)
+        b_layout = make_glyph(200.0)
+        process_layout = make_process_layout(100.0)
+        consumption_layout = make_arc(
+            momapy.sbgn.pd.ConsumptionLayout, process_layout, a_layout
+        )
+        clone_consumption_layout = make_arc(
+            momapy.sbgn.pd.ConsumptionLayout, process_layout, a_clone_layout
+        )
+        production_layout = make_arc(
+            momapy.sbgn.pd.ProductionLayout, process_layout, b_layout
+        )
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [
+                a_layout,
+                a_clone_layout,
+                b_layout,
+                process_layout,
+                consumption_layout,
+                clone_consumption_layout,
+                production_layout,
+            ],
+            {
+                a_layout: a,
+                a_clone_layout: a,
+                b_layout: b,
+                process_layout: process,
+                consumption_layout: reactant,
+                clone_consumption_layout: reactant,
+                production_layout: product,
+            },
+        )
+        mapping = map_.layout_model_mapping
+        kept_process = next(iter(map_.model.processes))
+        kept_reactant = next(iter(kept_process.reactants))
+        assert kept_reactant.stoichiometry == 2
+        assert mapping[consumption_layout] is kept_reactant
+        assert mapping[clone_consumption_layout] is kept_reactant
+        assert set(mapping.get_child_layout_elements(kept_reactant, kept_process)) == {
+            consumption_layout,
+            clone_consumption_layout,
+        }
+
+    def test_process_drawn_twice(self):
+        a = momapy.sbgn.pd.Macromolecule(label="A")
+        reactant = momapy.sbgn.pd.Reactant(referred_element=a)
+        process = momapy.sbgn.pd.GenericProcess(reactants=frozenset([reactant]))
+        layout_elements = []
+        layout_element_to_model_element = {}
+        for y in [0.0, 100.0]:
+            a_layout = make_glyph(0.0, y)
+            process_layout = make_process_layout(100.0, y)
+            consumption_layout = make_arc(
+                momapy.sbgn.pd.ConsumptionLayout, process_layout, a_layout
+            )
+            layout_elements += [a_layout, process_layout, consumption_layout]
+            layout_element_to_model_element |= {
+                a_layout: a,
+                process_layout: process,
+                consumption_layout: reactant,
+            }
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            layout_elements, layout_element_to_model_element
+        )
+        keys = map_.layout_model_mapping.get_mapping(next(iter(map_.model.processes)))
+        assert set(keys) == {
+            frozenset(layout_elements[:3]),
+            frozenset(layout_elements[3:]),
+        }
+
+    def test_empty_set_in_process_key(self):
+        b = momapy.sbgn.pd.Macromolecule(label="B")
+        product = momapy.sbgn.pd.Product(referred_element=b)
+        process = momapy.sbgn.pd.GenericProcess(
+            products=frozenset([product]), has_external_source=True
+        )
+        empty_set_layout = make_glyph(0.0, cls=momapy.sbgn.pd.EmptySetLayout)
+        b_layout = make_glyph(200.0)
+        process_layout = make_process_layout(100.0)
+        consumption_layout = make_arc(
+            momapy.sbgn.pd.ConsumptionLayout, process_layout, empty_set_layout
+        )
+        production_layout = make_arc(
+            momapy.sbgn.pd.ProductionLayout, process_layout, b_layout
+        )
+        layout_elements = [
+            empty_set_layout,
+            b_layout,
+            process_layout,
+            consumption_layout,
+            production_layout,
+        ]
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            layout_elements,
+            {b_layout: b, process_layout: process, production_layout: product},
+        )
+        assert map_.layout_model_mapping.representative_to_key[
+            process_layout
+        ] == frozenset(layout_elements)
+
+    def test_no_layout_elements(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        model_elements = [
+            model_element
+            for model_element in layout_element_to_model_element.values()
+            if isinstance(
+                model_element,
+                (momapy.sbgn.pd.GenericProcess, momapy.sbgn.pd.Catalysis),
+            )
+        ]
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            model_elements=model_elements
+        )
+        assert len(map_.model.entity_pools) == 3
+        assert map_.layout is None
+        assert map_.layout_model_mapping is None
+        rebuilt_map = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            *momapy.sbgn.utils.get_map_elements_from_pd_map(map_)
+        )
+        assert rebuilt_map.model == map_.model
+        merged_map = momapy.sbgn.utils.merge_pd_maps([map_, map_])
+        assert merged_map.model == map_.model
+        assert merged_map.layout is None
+
+    def test_nothing_given(self):
+        map_ = momapy.sbgn.utils.make_pd_map_from_map_elements()
+        assert map_.model is None
+        assert map_.layout is None
+        assert map_.layout_model_mapping is None
+
+
+class TestMakeMapFromMapElementsErrors:
+    def test_mapping_key_not_in_layout(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        a_layout = layout_elements[0]
+        a = layout_element_to_model_element.pop(a_layout)
+        layout_element_to_model_element[dataclasses.replace(a_layout)] = a
+        with pytest.raises(ValueError, match="mapping key"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                layout_elements, layout_element_to_model_element
+            )
+
+    def test_arc_end_not_in_layout(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        consumption_layout = layout_elements[4]
+        new_consumption_layout = dataclasses.replace(
+            consumption_layout, target=dataclasses.replace(layout_elements[0])
+        )
+        layout_elements[4] = new_consumption_layout
+        layout_element_to_model_element[new_consumption_layout] = (
+            layout_element_to_model_element.pop(consumption_layout)
+        )
+        with pytest.raises(ValueError, match="end .* of arc"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                layout_elements, layout_element_to_model_element
+            )
+
+    def test_element_held_by_two_owners(self):
+        state_variable = momapy.sbgn.pd.StateVariable(value="P")
+        a = momapy.sbgn.pd.Macromolecule(
+            label="A", state_variables=frozenset([state_variable])
+        )
+        b = momapy.sbgn.pd.Macromolecule(
+            label="B", state_variables=frozenset([state_variable])
+        )
+        with pytest.raises(ValueError, match="held by two owners"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(model_elements=[a, b])
+
+    def test_owned_element_with_no_owner(self):
+        a = momapy.sbgn.pd.Macromolecule(label="A")
+        with pytest.raises(ValueError, match="not held by any element"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                model_elements=[momapy.sbgn.pd.Reactant(referred_element=a)]
+            )
+
+    def test_arc_mapped_to_child_not_held(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        consumption_layout = layout_elements[4]
+        reactant = layout_element_to_model_element[consumption_layout]
+        other_process = momapy.sbgn.pd.GenericProcess(
+            reactants=frozenset([dataclasses.replace(reactant, stoichiometry=3)])
+        )
+        layout_element_to_model_element[consumption_layout] = next(
+            iter(other_process.reactants)
+        )
+        with pytest.raises(ValueError, match="does not hold"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                layout_elements, layout_element_to_model_element, [other_process]
+            )
+
+    def test_consumption_arc_mapped_to_product(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        process_layout = layout_elements[3]
+        process = layout_element_to_model_element[process_layout]
+        a = layout_element_to_model_element[layout_elements[0]]
+        product = momapy.sbgn.pd.Product(referred_element=a)
+        new_process = dataclasses.replace(
+            process, products=process.products | {product}
+        )
+        layout_element_to_model_element[process_layout] = new_process
+        layout_element_to_model_element[layout_elements[4]] = product
+        catalysis_layout = layout_elements[6]
+        layout_element_to_model_element[catalysis_layout] = dataclasses.replace(
+            layout_element_to_model_element[catalysis_layout], target=new_process
+        )
+        with pytest.raises(ValueError, match="may only map to Reactant"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                layout_elements, layout_element_to_model_element
+            )
+
+    def test_consumption_arc_to_other_element(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        process_layout = layout_elements[3]
+        consumption_layout = layout_elements[4]
+        new_consumption_layout = dataclasses.replace(
+            consumption_layout, target=layout_elements[1]
+        )
+        layout_elements[4] = new_consumption_layout
+        layout_element_to_model_element[new_consumption_layout] = (
+            layout_element_to_model_element.pop(consumption_layout)
+        )
+        assert new_consumption_layout.source is process_layout
+        with pytest.raises(ValueError, match="does not draw it"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                layout_elements, layout_element_to_model_element
+            )
+
+    def test_modulation_arc_with_wrong_source(self):
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        catalysis_layout = layout_elements[6]
+        new_catalysis_layout = dataclasses.replace(
+            catalysis_layout, source=layout_elements[0]
+        )
+        layout_elements[6] = new_catalysis_layout
+        layout_element_to_model_element[new_catalysis_layout] = (
+            layout_element_to_model_element.pop(catalysis_layout)
+        )
+        with pytest.raises(ValueError, match="does not draw the source"):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                layout_elements, layout_element_to_model_element
+            )
+
+    def test_mapped_equivalence_operator(self):
+        equivalence_operator = momapy.sbgn.pd.EquivalenceOperator()
+        equivalence_operator_layout = make_glyph(
+            0.0, cls=momapy.sbgn.pd.EquivalenceOperatorLayout
+        )
+        with pytest.raises(NotImplementedError):
+            momapy.sbgn.utils.make_pd_map_from_map_elements(
+                [equivalence_operator_layout],
+                {equivalence_operator_layout: equivalence_operator},
+            )
+
+
+class TestMergeMaps:
+    def test_merge_one_map(self, pd_map):
+        merged_map = momapy.sbgn.utils.merge_pd_maps([pd_map])
+        assert merged_map.model == pd_map.model
+        assert merged_map.layout.layout_elements == pd_map.layout.layout_elements
+        assert dict(merged_map.layout_model_mapping) == dict(
+            pd_map.layout_model_mapping
+        )
+
+    def test_merge_map_with_itself(self, pd_map):
+        merged_map = momapy.sbgn.utils.merge_pd_maps([pd_map])
+        merged_twice_map = momapy.sbgn.utils.merge_pd_maps([pd_map, pd_map])
+        assert merged_twice_map.model == merged_map.model
+        assert (
+            merged_twice_map.layout.layout_elements == merged_map.layout.layout_elements
+        )
+        assert dict(merged_twice_map.layout_model_mapping) == dict(
+            merged_map.layout_model_mapping
+        )
+
+    def test_merge_empty(self):
+        map_ = momapy.sbgn.utils.merge_pd_maps([])
+        assert map_.model is None
+        assert map_.layout is None
+        assert map_.layout_model_mapping is None
+
+    def make_atp_map(self, atp_id, layout_id, y=0.0):
+        atp = momapy.sbgn.pd.SimpleChemical(label="ATP", id_=atp_id)
+        atp_layout = dataclasses.replace(
+            make_glyph(0.0, y, cls=momapy.sbgn.pd.SimpleChemicalLayout), id_=layout_id
+        )
+        return momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [atp_layout], {atp_layout: atp}
+        )
+
+    def test_survivors_do_not_depend_on_order(self):
+        first_map = self.make_atp_map("b", "layout_b")
+        second_map = self.make_atp_map("a", "layout_a")
+        for maps in [[first_map, second_map], [second_map, first_map]]:
+            merged_map = momapy.sbgn.utils.merge_pd_maps(maps)
+            assert [
+                layout_element.id_
+                for layout_element in merged_map.layout.layout_elements
+            ] == ["layout_a"]
+            assert [element.id_ for element in merged_map.model.entity_pools] == ["a"]
+
+    def test_shared_model_element_at_different_places(self):
+        merged_map = momapy.sbgn.utils.merge_pd_maps(
+            [
+                self.make_atp_map("atp", "first"),
+                self.make_atp_map("atp", "second", 100.0),
+            ]
+        )
+        atp = next(iter(merged_map.model.entity_pools))
+        assert len(merged_map.model.entity_pools) == 1
+        assert len(merged_map.layout_model_mapping.get_mapping(atp)) == 2
+
+    def test_arcs_point_to_kept_glyph(self):
+        first_map = self.make_atp_map("atp", "first")
+        layout_elements, layout_element_to_model_element = (
+            make_simple_process_map_elements()
+        )
+        a_layout = layout_elements[0]
+        atp_layout = dataclasses.replace(
+            make_glyph(0.0, cls=momapy.sbgn.pd.SimpleChemicalLayout), id_="second"
+        )
+        consumption_layout = dataclasses.replace(layout_elements[4], target=atp_layout)
+        reactant = layout_element_to_model_element.pop(layout_elements[4])
+        atp = momapy.sbgn.pd.SimpleChemical(label="ATP", id_="atp")
+        process_layout = layout_elements[3]
+        process = layout_element_to_model_element[process_layout]
+        new_reactant = dataclasses.replace(reactant, referred_element=atp)
+        new_process = dataclasses.replace(process, reactants=frozenset([new_reactant]))
+        catalysis_layout = layout_elements[6]
+        del layout_element_to_model_element[a_layout]
+        layout_element_to_model_element |= {
+            atp_layout: atp,
+            consumption_layout: new_reactant,
+            process_layout: new_process,
+            catalysis_layout: dataclasses.replace(
+                layout_element_to_model_element[catalysis_layout], target=new_process
+            ),
+        }
+        second_map = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [
+                atp_layout,
+                *layout_elements[1:4],
+                consumption_layout,
+                *layout_elements[5:],
+            ],
+            layout_element_to_model_element,
+        )
+        merged_map = momapy.sbgn.utils.merge_pd_maps([first_map, second_map])
+        atp_layouts = [
+            layout_element
+            for layout_element in merged_map.layout.layout_elements
+            if isinstance(layout_element, momapy.sbgn.pd.SimpleChemicalLayout)
+        ]
+        assert [layout_element.id_ for layout_element in atp_layouts] == ["first"]
+        merged_consumption_layout = next(
+            layout_element
+            for layout_element in merged_map.layout.layout_elements
+            if isinstance(layout_element, momapy.sbgn.pd.ConsumptionLayout)
+        )
+        assert merged_consumption_layout.target is atp_layouts[0]
+
+    def test_equal_layout_elements_with_different_model_elements(self):
+        first_map = self.make_atp_map("atp", "first")
+        adp = momapy.sbgn.pd.SimpleChemical(label="ADP")
+        adp_layout = make_glyph(0.0, cls=momapy.sbgn.pd.SimpleChemicalLayout)
+        second_map = momapy.sbgn.utils.make_pd_map_from_map_elements(
+            [adp_layout], {adp_layout: adp}
+        )
+        with pytest.raises(ValueError, match="not equal"):
+            momapy.sbgn.utils.merge_pd_maps([first_map, second_map])

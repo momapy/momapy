@@ -47,6 +47,11 @@ class LayoutModelMapping(FrozenIdentitySurjectionDict):
     reference the cluster by its representative rather than by the whole
     frozenset.
 
+    Keys compare by content, like layout elements: two equal layout
+    elements are one key. Writers, however, find arc ends by object, so
+    every arc ``source`` and ``target`` and every layout element of the
+    mapping must be an object of the layout itself, not an equal copy.
+
     See the SBGN-PD, SBGN-AF, and CellDesigner module documentation for
     the per-model-element catalogue of key shapes and representatives.
     """
