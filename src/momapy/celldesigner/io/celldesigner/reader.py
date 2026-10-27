@@ -1564,6 +1564,7 @@ class CellDesignerReader(Reader):
                 layout_element.id_ = f"{cd_gate_id}_layout"
                 layout_element = object_from_builder(layout_element)
                 reading_context.layout.layout_elements.append(layout_element)
+                gate_layout_elements = [layout_element]
             else:
                 layout_element = None
             for cd_input_id in cd_input_ids:
@@ -1594,6 +1595,8 @@ class CellDesignerReader(Reader):
                     logic_arc.id_ = f"{cd_gate_id}_arc_{cd_input_id}"
                     logic_arc = object_from_builder(logic_arc)
                     reading_context.layout.layout_elements.append(logic_arc)
+                    gate_layout_elements.append(logic_arc)
+                    gate_layout_elements.append(input_layout_element)
                 if input_model_element is not None and logic_arc is not None:
                     reading_context.layout_model_mapping.add_mapping(
                         logic_arc,
@@ -1609,7 +1612,9 @@ class CellDesignerReader(Reader):
                 )
             if model_element is not None and layout_element is not None:
                 reading_context.layout_model_mapping.add_mapping(
-                    layout_element, model_element
+                    frozenset(gate_layout_elements),
+                    model_element,
+                    representative=layout_element,
                 )
         return model_element, layout_element
 
