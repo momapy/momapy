@@ -182,7 +182,11 @@ class EntityPool(SBGNModelElement):
     """Abstract base class for entity pools."""
 
     compartment: Compartment | None = dataclasses.field(
-        default=None, metadata={"description": "The compartment of the entity pool"}
+        default=None,
+        metadata={
+            "description": "The compartment of the entity pool",
+            "reference": True,
+        },
     )
 
 
@@ -516,10 +520,10 @@ class Modulation(SBGNModelElement):
     """Modulation."""
 
     source: EntityPool | LogicalOperator = dataclasses.field(
-        metadata={"description": "The source of the modulation"}
+        metadata={"description": "The source of the modulation", "reference": True}
     )
     target: Process = dataclasses.field(
-        metadata={"description": "The target of the modulation"}
+        metadata={"description": "The target of the modulation", "reference": True}
     )
 
 

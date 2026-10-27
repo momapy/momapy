@@ -61,7 +61,10 @@ class SBGNRole(SBGNModelElement):
     """Abstract base class for SBGN roles."""
 
     referred_element: SBGNModelElement = dataclasses.field(
-        metadata={"description": "The SBGN model element this role refers to."}
+        metadata={
+            "description": "The SBGN model element this role refers to.",
+            "reference": True,
+        }
     )
 
 

@@ -82,7 +82,8 @@ class Compartment(SBMLModelElement):
     ] = dataclasses.field(
         default=None,
         metadata={
-            "description": "Optional outer compartment for hierarchical nesting."
+            "description": "Optional outer compartment for hierarchical nesting.",
+            "reference": True,
         },
     )
 
@@ -93,7 +94,10 @@ class Species(SBMLModelElement):
 
     compartment: Compartment | None = dataclasses.field(
         default=None,
-        metadata={"description": "The compartment containing this species."},
+        metadata={
+            "description": "The compartment containing this species.",
+            "reference": True,
+        },
     )
 
 
@@ -102,7 +106,7 @@ class SimpleSpeciesReference(SBMLModelElement):
     """Abstract base class for simple species references."""
 
     referred_element: Species = dataclasses.field(
-        metadata={"description": "The species being referenced."}
+        metadata={"description": "The species being referenced.", "reference": True}
     )
 
 
@@ -135,7 +139,10 @@ class Reaction(SBMLModelElement):
     )
     compartment: Compartment | None = dataclasses.field(
         default=None,
-        metadata={"description": "Optional compartment where the reaction occurs."},
+        metadata={
+            "description": "Optional compartment where the reaction occurs.",
+            "reference": True,
+        },
     )
     reactants: frozenset[SpeciesReference] = dataclasses.field(
         default_factory=frozenset

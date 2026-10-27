@@ -267,7 +267,7 @@ class Modification(CellDesignerModelElement):
 
     residue: ModificationResidue | ModificationSite | None = dataclasses.field(
         default=None,
-        metadata={"description": "The residue of the modification"},
+        metadata={"description": "The residue of the modification", "reference": True},
     )
     state: ModificationState | None = dataclasses.field(
         default=None, metadata={"description": "The state of the modification"}
@@ -320,7 +320,7 @@ class Protein(Species):
     """Abstract base class for proteins."""
 
     template: ProteinTemplate = dataclasses.field(
-        metadata={"description": "The template of the species"}
+        metadata={"description": "The template of the species", "reference": True}
     )
     modifications: frozenset[Modification] = dataclasses.field(
         default_factory=frozenset,
@@ -373,7 +373,7 @@ class Gene(Species):
     """Gene."""
 
     template: GeneTemplate = dataclasses.field(
-        metadata={"description": "The template of the gene"}
+        metadata={"description": "The template of the gene", "reference": True}
     )
     modifications: frozenset[Modification] = dataclasses.field(
         default_factory=frozenset,
@@ -386,7 +386,7 @@ class RNA(Species):
     """RNA."""
 
     template: RNATemplate = dataclasses.field(
-        metadata={"description": "The template of the RNA"}
+        metadata={"description": "The template of the RNA", "reference": True}
     )
     modifications: frozenset[Modification] = dataclasses.field(
         default_factory=frozenset,
@@ -399,7 +399,7 @@ class AntisenseRNA(Species):
     """Antisense RNA."""
 
     template: AntisenseRNATemplate = dataclasses.field(
-        metadata={"description": "The template of the antisense RNA"}
+        metadata={"description": "The template of the antisense RNA", "reference": True}
     )
     modifications: frozenset[Modification] = dataclasses.field(
         default_factory=frozenset,
@@ -700,10 +700,10 @@ class KnownOrUnknownModulation(CellDesignerModelElement):
     """Abstract base class for known or unknown modulations."""
 
     source: Species | BooleanLogicGate = dataclasses.field(
-        metadata={"description": "The source of the modulation"}
+        metadata={"description": "The source of the modulation", "reference": True}
     )
     target: Species | None = dataclasses.field(
-        metadata={"description": "The target of the modulation"}
+        metadata={"description": "The target of the modulation", "reference": True}
     )
 
 

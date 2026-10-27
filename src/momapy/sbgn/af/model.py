@@ -85,7 +85,10 @@ class Activity(SBGNModelElement):
     )
     compartment: Compartment | None = dataclasses.field(
         default=None,
-        metadata={"description": "The compartment containing this activity."},
+        metadata={
+            "description": "The compartment containing this activity.",
+            "reference": True,
+        },
     )
 
 
@@ -163,10 +166,16 @@ class Influence(SBGNModelElement):
     """Abstract base class for influences."""
 
     source: BiologicalActivity | LogicalOperator = dataclasses.field(
-        metadata={"description": "The source activity or logical operator."}
+        metadata={
+            "description": "The source activity or logical operator.",
+            "reference": True,
+        }
     )
     target: Activity = dataclasses.field(
-        metadata={"description": "The target activity being influenced."}
+        metadata={
+            "description": "The target activity being influenced.",
+            "reference": True,
+        }
     )
 
 
