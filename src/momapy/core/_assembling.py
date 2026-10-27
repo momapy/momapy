@@ -273,15 +273,17 @@ def match_descendants(dropped: MapElement, kept: MapElement) -> dict[int, MapEle
     return matches
 
 
-def describe(element: MapElement) -> str:
+def describe(element: MapElement | None) -> str:
     """Return a short description of a map element for error messages.
 
     Args:
-        element: The map element.
+        element: The map element, or `None`.
 
     Returns:
-        The class name and the id of the element.
+        The class name and the id of the element, or `None`.
     """
+    if element is None:
+        return "None"
     return f"{type(element).__name__} {element.id_!r}"
 
 

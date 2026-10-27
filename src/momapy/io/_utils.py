@@ -16,6 +16,7 @@ import lxml.etree
 from momapy.core._assembling import ClusterRule
 from momapy.core._assembling import check_layout_element_identities
 from momapy.core._assembling import deduplicate_model_elements
+from momapy.core._assembling import describe
 from momapy.core._assembling import make_layout_model_mapping
 from momapy.core._assembling import match_descendants
 from momapy.core.elements import LayoutElement
@@ -631,6 +632,46 @@ def add_child_model_element(
             match_descendants(dropped_child, kept_child)
         )
     return kept_child
+
+
+def add_layout_model_pair(
+    reading_context: ReadingContext,
+    layout_element: LayoutElement,
+    model_element: ModelElement,
+) -> None:
+    """Record that a layout element draws a model element.
+
+    An equal layout element may already be recorded with an equal model
+    element: the same model element is then drawn twice at the same place.
+
+    Args:
+        reading_context: The reading context.
+        layout_element: The layout element.
+        model_element: The model element it draws.
+
+    Raises:
+        ValueError: If an equal layout element is already recorded with a
+            model element that is not equal to `model_element`.
+    """
+    recorded_model_element = reading_context.layout_element_to_model_element.get(
+        layout_element
+    )
+    if recorded_model_element is not None and recorded_model_element != (model_element):
+        recorded_layout_element = next(
+            recorded_layout_element
+            for recorded_layout_element in (
+                reading_context.layout_element_to_model_element
+            )
+            if recorded_layout_element == layout_element
+        )
+        raise ValueError(
+            f"layout elements {describe(recorded_layout_element)} and "
+            f"{describe(layout_element)} are equal but draw different model "
+            f"elements {describe(recorded_model_element)} and "
+            f"{describe(model_element)}; two equal layout elements cannot be "
+            "told apart"
+        )
+    reading_context.layout_element_to_model_element[layout_element] = model_element
 
 
 def resolve_model_element_replacement(

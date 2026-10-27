@@ -701,3 +701,79 @@ class TestEqualChildren:
                 state_variable, subunit
             )
         } == {"state_variable_1", "state_variable_2"}
+
+
+_STACKED_PROCESSES_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="stacked_processes">
+        <glyph id="glyph_a" class="macromolecule">
+            <label text="A"/>
+            <bbox y="40.0" x="100.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="glyph_b" class="macromolecule">
+            <label text="B"/>
+            <bbox y="40.0" x="400.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="glyph_c" class="macromolecule">
+            <label text="C"/>
+            <bbox y="160.0" x="100.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="process_1" class="process">
+            <bbox y="120.0" x="300.0" h="20.0" w="20.0"/>
+            <port id="process_1.1" y="130.0" x="290.0"/>
+            <port id="process_1.2" y="130.0" x="330.0"/>
+        </glyph>
+        <glyph id="process_2" class="process">
+            <bbox y="120.0" x="300.0" h="20.0" w="20.0"/>
+            <port id="process_2.1" y="130.0" x="290.0"/>
+            <port id="process_2.2" y="130.0" x="330.0"/>
+        </glyph>
+        <arc id="arc_a" target="process_1.1" source="glyph_a" class="consumption">
+            <start y="70.0" x="220.0"/>
+            <end y="130.0" x="290.0"/>
+        </arc>
+        <arc id="arc_b" target="glyph_b" source="process_1.2" class="production">
+            <start y="130.0" x="330.0"/>
+            <end y="70.0" x="400.0"/>
+        </arc>
+        <arc id="arc_c" target="process_2.1" source="glyph_c" class="consumption">
+            <start y="190.0" x="220.0"/>
+            <end y="130.0" x="290.0"/>
+        </arc>
+    </map>
+</sbgn>
+"""
+
+
+_STACKED_COMPARTMENTS_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="stacked_compartments">
+        <glyph id="compartment_1" class="compartment">
+            <label text="cell"/>
+            <bbox y="40.0" x="100.0" h="200.0" w="300.0"/>
+        </glyph>
+        <glyph id="compartment_2" class="compartment">
+            <label text="cell"/>
+            <bbox y="40.0" x="100.0" h="200.0" w="300.0"/>
+        </glyph>
+    </map>
+</sbgn>
+"""
+
+
+class TestEqualLayoutElements:
+    def test_stacked_processes_with_different_models_are_rejected(self, tmp_path):
+        path = tmp_path / "stacked_processes.sbgn"
+        path.write_text(_STACKED_PROCESSES_SBGN)
+        with pytest.raises(ValueError, match="are equal but draw different model"):
+            momapy.io.core.read(str(path))
+
+    def test_stacked_glyphs_with_the_same_model_are_read(self, tmp_path):
+        path = tmp_path / "stacked_compartments.sbgn"
+        path.write_text(_STACKED_COMPARTMENTS_SBGN)
+        map_ = momapy.io.core.read(str(path)).obj
+        assert len(map_.model.compartments) == 1
+        compartment = next(iter(map_.model.compartments))
+        assert map_.layout_model_mapping.get_mapping(compartment) is not None
