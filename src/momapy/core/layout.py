@@ -897,14 +897,16 @@ class Arc(GroupLayout):
         metadata={"description": "The path segments of the arc"},
     )
     source: LayoutElement | None = dataclasses.field(
-        default=None, metadata={"description": "The source of the arc"}
+        default=None,
+        metadata={"description": "The source of the arc", "reference": True},
     )
     start_shorten: float = dataclasses.field(
         default=0.0,
         metadata={"description": "The length the start of the arc will be shorten by"},
     )
     target: LayoutElement | None = dataclasses.field(
-        default=None, metadata={"description": "The target of the arc"}
+        default=None,
+        metadata={"description": "The target of the arc", "reference": True},
     )
     transform: NoneValueType | tuple[Transformation, ...] | None = dataclasses.field(
         default=None, metadata={"description": "The transform of the arc"}

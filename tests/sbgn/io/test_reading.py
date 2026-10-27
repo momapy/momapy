@@ -560,3 +560,27 @@ class TestLabelBbox:
         }
         assert labels["glyph1"] == Point(340.0, 30.0)
         assert labels["glyph2"] == Point(200.0, 400.0)
+
+
+AF_FILE = os.path.join(TEST_DIR, "..", "maps", "af", "small_activity_flow.sbgn")
+
+
+class TestAFReading:
+    def test_af_tags_are_read(self):
+        map_ = momapy.io.core.read(AF_FILE).obj
+        assert len(map_.model.tags) == 1
+
+    def test_af_map_has_only_af_classes(self):
+        map_ = momapy.io.core.read(AF_FILE).obj
+        operator = next(iter(map_.model.logical_operators))
+        submap = next(iter(map_.model.submaps))
+        tag = next(iter(map_.model.tags))
+        model_elements = [
+            *operator.inputs,
+            *submap.terminals,
+            *[terminal.referred_element for terminal in submap.terminals],
+            tag,
+            tag.referred_element,
+        ]
+        for element in model_elements + map_.layout.descendants():
+            assert not type(element).__module__.startswith("momapy.sbgn.pd")

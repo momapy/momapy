@@ -10,14 +10,10 @@ import typing
 from momapy.builder import new_builder_object
 from momapy.builder import object_from_builder
 from momapy.core.elements import Orientation
-from momapy.sbgn.pd import LogicalOperatorInput
 from momapy.sbgn.pd import Product
 from momapy.sbgn.pd import Reactant
 from momapy.sbgn.pd import StateVariable
-from momapy.sbgn.pd import Tag
-from momapy.sbgn.pd import TagReference
-from momapy.sbgn.pd import Terminal
-from momapy.sbgn.pd import TerminalReference
+from momapy.sbgn.io.sbgnml._reading_classification import get_module
 from momapy.sbgn.io.sbgnml._reading_classification import get_module_from_object
 from momapy.sbgn.io.sbgnml._reading_parsing import get_notes
 from momapy.sbgn.io.sbgnml._reading_parsing import get_rdf
@@ -316,10 +312,11 @@ def make_terminal_or_tag(
     if reading_context.model is None:
         return None
     sbgnml_id = sbgnml_terminal_or_tag.get("id")
+    module = get_module(reading_context.map_key)
     if is_terminal:
-        model_element_cls = Terminal
+        model_element_cls = module.Terminal
     else:
-        model_element_cls = Tag
+        model_element_cls = module.Tag
     model_element = new_builder_object(model_element_cls)
     model_element.id_ = f"{sbgnml_id}_model"
     set_label(model_element, sbgnml_terminal_or_tag)
@@ -348,10 +345,11 @@ def make_reference(
     # to the terminal or tag. We invert the arc, so that the arc goes
     # from the reference to the referred node.
     sbgnml_target_id = sbgnml_equivalence_arc.get("source")
+    module = get_module(reading_context.map_key)
     if is_terminal:
-        model_element_cls = TerminalReference
+        model_element_cls = module.TerminalReference
     else:
-        model_element_cls = TagReference
+        model_element_cls = module.TagReference
     model_element = new_builder_object(model_element_cls)
     model_element.id_ = f"{sbgnml_id}_model"
     target_model_element = next(
@@ -513,7 +511,8 @@ def make_logical_operator_input(
     """
     if reading_context.model is None:
         return None
-    model_element = new_builder_object(LogicalOperatorInput)
+    module = get_module(reading_context.map_key)
+    model_element = new_builder_object(module.LogicalOperatorInput)
     model_element.id_ = f"{sbgnml_logic_arc.get('id')}_model"
     model_element.referred_element = source_model_element
     model_element = object_from_builder(model_element)

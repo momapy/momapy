@@ -18,12 +18,9 @@ from momapy.drawing import DEFAULT_FONT_FAMILY
 from momapy.drawing import NoneValue
 from momapy.sbgn.pd import CardinalityLayout
 from momapy.sbgn.pd import ConsumptionLayout
-from momapy.sbgn.pd import EquivalenceArcLayout
-from momapy.sbgn.pd import LogicArcLayout
 from momapy.sbgn.pd import ProductionLayout
 from momapy.sbgn.pd import StateVariableLayout
-from momapy.sbgn.pd import TagLayout
-from momapy.sbgn.pd import TerminalLayout
+from momapy.sbgn.io.sbgnml._reading_classification import get_module
 from momapy.sbgn.io.sbgnml._reading_classification import get_module_from_object
 from momapy.sbgn.io.sbgnml._reading_parsing import get_connectors_length
 from momapy.sbgn.io.sbgnml._reading_parsing import get_direction
@@ -345,10 +342,11 @@ def make_terminal_or_tag(
         return None
     sbgnml_id = sbgnml_terminal_or_tag.get("id")
     sbgnml_label = getattr(sbgnml_terminal_or_tag, "label", None)
+    module = get_module(reading_context.map_key)
     if is_terminal:
-        layout_element_cls = TerminalLayout
+        layout_element_cls = module.TerminalLayout
     else:
-        layout_element_cls = TagLayout
+        layout_element_cls = module.TagLayout
     layout_element = new_builder_object(layout_element_cls)
     layout_element.id_ = sbgnml_id
     set_position_and_size(layout_element, sbgnml_terminal_or_tag)
@@ -383,7 +381,8 @@ def make_reference(
     # to the terminal or tag. We invert the arc, so that the arc goes
     # from the reference to the referred node.
     sbgnml_target_id = sbgnml_equivalence_arc.get("source")
-    layout_element = new_builder_object(EquivalenceArcLayout)
+    module = get_module(reading_context.map_key)
+    layout_element = new_builder_object(module.EquivalenceArcLayout)
     layout_element.id_ = sbgnml_id
     layout_element.source = super_layout_element
     for segment in make_arc_segments(sbgnml_equivalence_arc, reverse=True):
@@ -542,7 +541,8 @@ def make_logical_operator_input(
     """
     if reading_context.layout is None:
         return None
-    layout_element = new_builder_object(LogicArcLayout)
+    module = get_module(reading_context.map_key)
+    layout_element = new_builder_object(module.LogicArcLayout)
     layout_element.id_ = sbgnml_logic_arc.get("id")
     # The source becomes the target: in momapy logic arcs go from
     # the operator to the input node.

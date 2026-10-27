@@ -9,6 +9,11 @@ import collections
 import collections.abc
 import typing
 
+from momapy.core._assembling import get_map_elements_from_map
+from momapy.core._assembling import make_map_from_map_elements
+from momapy.core._assembling import merge_maps
+from momapy.core.elements import LayoutElement
+from momapy.core.elements import ModelElement
 from momapy.positioning import fit
 from momapy.positioning import set_fit
 from momapy.positioning import set_position
@@ -33,6 +38,7 @@ from momapy.sbgn.pd import NotOperatorLayout as PDNotOperatorLayout
 from momapy.sbgn.pd import OrOperatorLayout as PDOrOperatorLayout
 from momapy.sbgn.pd import Product
 from momapy.sbgn.pd import ProductionLayout
+from momapy.sbgn.pd import SBGNPDLayout
 from momapy.sbgn.pd import SBGNPDMap
 from momapy.sbgn.pd import SBGNPDModel
 from momapy.sbgn.pd import StateVariableLayout
@@ -51,16 +57,27 @@ from momapy.sbgn.af import NucleicAcidFeatureUnitOfInformationLayout
 from momapy.sbgn.af import OrOperatorLayout as AFOrOperatorLayout
 from momapy.sbgn.af import PerturbationUnitOfInformationLayout
 from momapy.sbgn.af import PositiveInfluenceLayout
+from momapy.sbgn.af import SBGNAFLayout
 from momapy.sbgn.af import SBGNAFMap
 from momapy.sbgn.af import SBGNAFModel
 from momapy.sbgn.af import SimpleChemicalUnitOfInformationLayout
 from momapy.sbgn.af import UnitOfInformationLayout as AFUnitOfInformationLayout
 from momapy.sbgn.af import UnknownInfluenceLayout
 from momapy.sbgn.af import UnspecifiedEntityUnitOfInformationLayout
+from momapy.sbgn._assembling import AF_CLUSTER_RULES
+from momapy.sbgn._assembling import AF_COLLECTION_TABLE
+from momapy.sbgn._assembling import PD_CLUSTER_RULES
+from momapy.sbgn._assembling import PD_COLLECTION_TABLE
 
 
 __all__ = [
     "get_info",
+    "get_map_elements_from_af_map",
+    "get_map_elements_from_pd_map",
+    "make_af_map_from_map_elements",
+    "make_pd_map_from_map_elements",
+    "merge_af_maps",
+    "merge_pd_maps",
     "newt_tidy",
     "sbgned_tidy",
     "set_arcs_to_borders",
@@ -835,3 +852,201 @@ def get_info(map_: SBGNMap) -> dict[str, typing.Any]:
         "model": model_info,
         "layout": layout_info,
     }
+
+
+def make_pd_map_from_map_elements(
+    layout_elements: collections.abc.Iterable[LayoutElement] = (),
+    layout_element_to_model_element: dict[LayoutElement, ModelElement] | None = None,
+    model_elements: collections.abc.Iterable[ModelElement] = (),
+) -> SBGNPDMap:
+    """Build an SBGN-PD map from its layout elements, model elements and a simple mapping.
+
+    The model collections and the frozenset keys of the layout-model mapping
+    are computed. Equal top-level model elements become one element (of
+    several equal elements, the one with the smallest `id_` is kept, the
+    first one on equal ids), and every element is rebuilt to point to the
+    kept ones. Top-level model elements reached but not listed (e.g. the
+    entity pool a reactant refers to) are added to their collection.
+
+    Args:
+        layout_elements: The top-level layout elements, in drawing order.
+        layout_element_to_model_element: A dict mapping single layout
+            elements (children included, e.g. an arc to its participant)
+            to the model elements they draw.
+        model_elements: Top-level model elements, needed only for those
+            with no layout element.
+
+    Returns:
+        The map. Its model is `None` if no model element is given, its
+        layout is `None` if no layout element is given, and its mapping is
+        `None` if either is `None`. Its layout is fitted to its layout
+        elements.
+
+    Raises:
+        ValueError: If the given elements are inconsistent: a mapping key or
+            an arc end that is not an object of the layout, an owned model
+            element held by two owners or by none, or an arc mapped to a
+            model element it does not draw.
+    """
+    if layout_element_to_model_element is None:
+        layout_element_to_model_element = {}
+    return make_map_from_map_elements(
+        layout_elements,
+        layout_element_to_model_element,
+        model_elements,
+        SBGNPDMap,
+        SBGNPDModel,
+        SBGNPDLayout,
+        PD_COLLECTION_TABLE,
+        PD_CLUSTER_RULES,
+    )
+
+
+def get_map_elements_from_pd_map(
+    map_: SBGNPDMap,
+) -> tuple[
+    tuple[LayoutElement, ...],
+    dict[LayoutElement, ModelElement],
+    tuple[ModelElement, ...],
+]:
+    """Take an SBGN-PD map apart into its layout elements, model elements and a simple mapping.
+
+    `make_pd_map_from_map_elements(*get_map_elements_from_pd_map(map_))`
+    rebuilds the map.
+
+    Args:
+        map_: The map.
+
+    Returns:
+        The top-level layout elements, a dict mapping single layout elements
+        to model elements (the representative of each frozenset key maps to
+        the model element of the key), and the top-level model elements.
+    """
+    return get_map_elements_from_map(map_)
+
+
+def merge_pd_maps(maps: collections.abc.Iterable[SBGNPDMap]) -> SBGNPDMap:
+    """Merge SBGN-PD maps into one map.
+
+    Equal top-level model elements become one element, and equal top-level
+    layout elements become one layout element, with the same survivor rule
+    as `make_pd_map_from_map_elements`. Maps are not moved: they
+    overlap in their own coordinates.
+
+    Args:
+        maps: The maps to merge.
+
+    Returns:
+        The merged map.
+
+    Raises:
+        ValueError: If equal layout elements draw model elements that are
+            not equal.
+    """
+    return merge_maps(
+        maps,
+        SBGNPDMap,
+        SBGNPDModel,
+        SBGNPDLayout,
+        PD_COLLECTION_TABLE,
+        PD_CLUSTER_RULES,
+    )
+
+
+def make_af_map_from_map_elements(
+    layout_elements: collections.abc.Iterable[LayoutElement] = (),
+    layout_element_to_model_element: dict[LayoutElement, ModelElement] | None = None,
+    model_elements: collections.abc.Iterable[ModelElement] = (),
+) -> SBGNAFMap:
+    """Build an SBGN-AF map from its layout elements, model elements and a simple mapping.
+
+    The model collections and the frozenset keys of the layout-model mapping
+    are computed. Equal top-level model elements become one element (of
+    several equal elements, the one with the smallest `id_` is kept, the
+    first one on equal ids), and every element is rebuilt to point to the
+    kept ones. Top-level model elements reached but not listed (e.g. the
+    entity pool a reactant refers to) are added to their collection.
+
+    Args:
+        layout_elements: The top-level layout elements, in drawing order.
+        layout_element_to_model_element: A dict mapping single layout
+            elements (children included, e.g. an arc to its participant)
+            to the model elements they draw.
+        model_elements: Top-level model elements, needed only for those
+            with no layout element.
+
+    Returns:
+        The map. Its model is `None` if no model element is given, its
+        layout is `None` if no layout element is given, and its mapping is
+        `None` if either is `None`. Its layout is fitted to its layout
+        elements.
+
+    Raises:
+        ValueError: If the given elements are inconsistent: a mapping key or
+            an arc end that is not an object of the layout, an owned model
+            element held by two owners or by none, or an arc mapped to a
+            model element it does not draw.
+    """
+    if layout_element_to_model_element is None:
+        layout_element_to_model_element = {}
+    return make_map_from_map_elements(
+        layout_elements,
+        layout_element_to_model_element,
+        model_elements,
+        SBGNAFMap,
+        SBGNAFModel,
+        SBGNAFLayout,
+        AF_COLLECTION_TABLE,
+        AF_CLUSTER_RULES,
+    )
+
+
+def get_map_elements_from_af_map(
+    map_: SBGNAFMap,
+) -> tuple[
+    tuple[LayoutElement, ...],
+    dict[LayoutElement, ModelElement],
+    tuple[ModelElement, ...],
+]:
+    """Take an SBGN-AF map apart into its layout elements, model elements and a simple mapping.
+
+    `make_af_map_from_map_elements(*get_map_elements_from_af_map(map_))`
+    rebuilds the map.
+
+    Args:
+        map_: The map.
+
+    Returns:
+        The top-level layout elements, a dict mapping single layout elements
+        to model elements (the representative of each frozenset key maps to
+        the model element of the key), and the top-level model elements.
+    """
+    return get_map_elements_from_map(map_)
+
+
+def merge_af_maps(maps: collections.abc.Iterable[SBGNAFMap]) -> SBGNAFMap:
+    """Merge SBGN-AF maps into one map.
+
+    Equal top-level model elements become one element, and equal top-level
+    layout elements become one layout element, with the same survivor rule
+    as `make_af_map_from_map_elements`. Maps are not moved: they
+    overlap in their own coordinates.
+
+    Args:
+        maps: The maps to merge.
+
+    Returns:
+        The merged map.
+
+    Raises:
+        ValueError: If equal layout elements draw model elements that are
+            not equal.
+    """
+    return merge_maps(
+        maps,
+        SBGNAFMap,
+        SBGNAFModel,
+        SBGNAFLayout,
+        AF_COLLECTION_TABLE,
+        AF_CLUSTER_RULES,
+    )

@@ -49,7 +49,6 @@ from momapy.sbgn.pd import EntityPool
 from momapy.sbgn.pd import Modulation
 from momapy.sbgn.pd import Phenotype
 from momapy.sbgn.pd import StoichiometricProcess
-from momapy.sbgn.pd import Tag
 from momapy.sbgn.af import Activity
 from momapy.sbgn.af import Influence
 from momapy.sbgn.io.sbgnml._reading_classification import KEY_TO_CLASS
@@ -264,7 +263,7 @@ class _SBGNMLReader(Reader):
                 reading_context.sbgnml_phenotypes.append(sbgnml_glyph)
             elif issubclass(model_element_cls, Activity):
                 reading_context.sbgnml_activities.append(sbgnml_glyph)
-            elif issubclass(model_element_cls, Tag):
+            elif issubclass(model_element_cls, module.Tag):
                 reading_context.sbgnml_tags.append(sbgnml_glyph)
             for sbgnml_subglyph in get_glyphs_recursively(sbgnml_glyph):
                 reading_context.xml_id_to_xml_element[sbgnml_subglyph.get("id")] = (
