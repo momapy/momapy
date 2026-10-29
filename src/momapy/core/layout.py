@@ -575,6 +575,13 @@ class Node(GroupLayout):
     optional label and its own border styling.
     """
 
+    container: "Node | None" = dataclasses.field(
+        default=None,
+        metadata={
+            "description": "The node in which the node is placed, when it is not a child",
+            "reference": True,
+        },
+    )
     fill: NoneValueType | Color | Gradient | None = dataclasses.field(
         default=None,
         metadata={"description": "The fill color of the node"},

@@ -30,7 +30,6 @@ import frozendict
 import lxml.objectify
 import lxml.etree
 
-import momapy.sbgn.pd
 
 from momapy.utils import IdentityMultiDict
 from momapy.core.elements import Orientation
@@ -38,9 +37,9 @@ from momapy.io.core import Reader
 from momapy.io.core import ReaderResult
 from momapy.utils import check_file_exists
 from momapy.io._utils import add_child_model_element
-from momapy.io._utils import add_layout_model_pair
 from momapy.io._utils import add_top_level_model_element
-from momapy.io._utils import assemble_model_and_layout_model_mapping
+from momapy.io._utils import merge_read_model_elements
+from momapy.core._assembling import make_layout_model_mapping
 from momapy.io._utils import build_id_mappings
 from momapy.io._utils import get_xml_root_element
 from momapy.sbgn.io.sbgnml._reading_context import SBGNMLReadingContext
@@ -54,10 +53,6 @@ from momapy.sbgn.pd import Reactant
 from momapy.sbgn.pd import StoichiometricProcess
 from momapy.sbgn.af import Activity
 from momapy.sbgn.af import Influence
-from momapy.sbgn._assembling import AF_CLUSTER_RULES
-from momapy.sbgn._assembling import AF_COLLECTION_TABLE
-from momapy.sbgn._assembling import PD_CLUSTER_RULES
-from momapy.sbgn._assembling import PD_COLLECTION_TABLE
 from momapy.sbgn.io.sbgnml._reading_classification import KEY_TO_CLASS
 from momapy.sbgn.io.sbgnml._reading_classification import get_arc_key
 from momapy.sbgn.io.sbgnml._reading_classification import get_glyph_key
@@ -439,15 +434,12 @@ class _SBGNMLReader(Reader):
                     sbgnml_modulation=sbgnml_modulation,
                 )
             if model is not None:
-                if get_module(reading_context.map_key) is momapy.sbgn.pd:
-                    collection_table = PD_COLLECTION_TABLE
-                    cluster_rules = PD_CLUSTER_RULES
-                else:
-                    collection_table = AF_COLLECTION_TABLE
-                    cluster_rules = AF_CLUSTER_RULES
-                layout_model_mapping = assemble_model_and_layout_model_mapping(
-                    reading_context, collection_table, cluster_rules
-                )
+                merge_read_model_elements(reading_context)
+                if layout is not None:
+                    layout_model_mapping = make_layout_model_mapping(
+                        layout.layout_elements,
+                        reading_context.layout_model_pairs,
+                    )
             if layout is not None:
                 sbgnml_bbox = getattr(sbgnml_map, "bbox", None)
                 if sbgnml_bbox is not None:
@@ -597,12 +589,12 @@ class _SBGNMLReader(Reader):
                     auxiliary_unit_model_element,
                     auxiliary_unit_layout_element,
                 ) in auxiliary_units_map_elements:
-                    add_layout_model_pair(
-                        reading_context,
-                        auxiliary_unit_layout_element,
-                        auxiliary_unit_model_element,
+                    reading_context.layout_model_pairs.append(
+                        (auxiliary_unit_layout_element, auxiliary_unit_model_element)
                     )
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None
@@ -643,7 +635,9 @@ class _SBGNMLReader(Reader):
                     sbgnml_entity_pool.get("id")
                 ] = layout_element
             if model_element is not None and layout_element is not None:
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None
@@ -800,10 +794,8 @@ class _SBGNMLReader(Reader):
                     auxiliary_unit_model_element,
                     auxiliary_unit_layout_element,
                 ) in auxiliary_units_map_elements:
-                    add_layout_model_pair(
-                        reading_context,
-                        auxiliary_unit_layout_element,
-                        auxiliary_unit_model_element,
+                    reading_context.layout_model_pairs.append(
+                        (auxiliary_unit_layout_element, auxiliary_unit_model_element)
                     )
         else:
             model_element = None
@@ -885,12 +877,12 @@ class _SBGNMLReader(Reader):
                     auxiliary_unit_model_element,
                     auxiliary_unit_layout_element,
                 ) in auxiliary_units_map_elements:
-                    add_layout_model_pair(
-                        reading_context,
-                        auxiliary_unit_layout_element,
-                        auxiliary_unit_model_element,
+                    reading_context.layout_model_pairs.append(
+                        (auxiliary_unit_layout_element, auxiliary_unit_model_element)
                     )
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None
@@ -1056,16 +1048,18 @@ class _SBGNMLReader(Reader):
                     ref_layout,
                     _,
                 ) in reference_map_elements:
-                    add_layout_model_pair(reading_context, ref_layout, ref_model)
+                    reading_context.layout_model_pairs.append((ref_layout, ref_model))
                 for (
                     terminal_model_element,
                     terminal_layout_element,
                     _,
                 ) in terminal_map_elements:
-                    add_layout_model_pair(
-                        reading_context, terminal_layout_element, terminal_model_element
+                    reading_context.layout_model_pairs.append(
+                        (terminal_layout_element, terminal_model_element)
                     )
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None
@@ -1132,12 +1126,10 @@ class _SBGNMLReader(Reader):
                     reference_model_element,
                     reference_layout_element,
                 ) in reference_map_elements:
-                    add_layout_model_pair(
-                        reading_context,
-                        reference_layout_element,
-                        reference_model_element,
+                    reading_context.layout_model_pairs.append(
+                        (reference_layout_element, reference_model_element)
                     )
-                add_layout_model_pair(reading_context, tag_layout, tag_model)
+                reading_context.layout_model_pairs.append((tag_layout, tag_model))
         else:
             tag_model = None
             tag_layout = None
@@ -1174,7 +1166,9 @@ class _SBGNMLReader(Reader):
                     layout_element
                 )
             if model_element is not None and layout_element is not None:
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None
@@ -1265,10 +1259,8 @@ class _SBGNMLReader(Reader):
                         sbgnml_arc_id, participant_model_element
                     )
                     if layout_element is not None:
-                        add_layout_model_pair(
-                            reading_context,
-                            participant_layout_element,
-                            participant_model_element,
+                        reading_context.layout_model_pairs.append(
+                            (participant_layout_element, participant_model_element)
                         )
                 model_element = object_from_builder(model_element)
                 model_element = add_top_level_model_element(
@@ -1283,7 +1275,9 @@ class _SBGNMLReader(Reader):
                     source_id=sbgnml_process.get("id"),
                 )
             if model_element is not None and layout_element is not None:
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None
@@ -1442,13 +1436,15 @@ class _SBGNMLReader(Reader):
                     sbgnml_logical_operator.get("id"),
                 )
             if model_element is not None and layout_element is not None:
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
                 for (
                     input_model_element,
                     input_layout_element,
                 ) in input_map_elements:
-                    add_layout_model_pair(
-                        reading_context, input_layout_element, input_model_element
+                    reading_context.layout_model_pairs.append(
+                        (input_layout_element, input_model_element)
                     )
         else:
             model_element = None
@@ -1590,7 +1586,9 @@ class _SBGNMLReader(Reader):
             else:
                 layout_element = None
             if model_element is not None and layout_element is not None:
-                add_layout_model_pair(reading_context, layout_element, model_element)
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         else:
             model_element = None
             layout_element = None

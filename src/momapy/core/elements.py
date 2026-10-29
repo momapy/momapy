@@ -2,6 +2,7 @@
 
 import abc
 import dataclasses
+import typing
 import typing_extensions
 import enum
 from momapy.drawing import drawing_elements_to_geometry
@@ -80,6 +81,92 @@ class MapElement:
         },
     )
 
+    def children(self) -> list["MapElement"]:
+        """Return the children of the map element.
+
+        The children are the map elements held by the fields of the map
+        element that are not reference fields (see `is_reference_field`),
+        directly or as items of a tuple or a frozenset.
+
+        Returns:
+            The children of the map element.
+        """
+        children = []
+        for field in dataclasses.fields(self):
+            if not is_reference_field(type(self), field.name):
+                children += get_field_map_elements(getattr(self, field.name))
+        return children
+
+    def descendants(self) -> list["MapElement"]:
+        """Return the descendants of the map element.
+
+        The descendants are the children of the map element and their
+        descendants, depth-first, without the map element itself.
+
+        Returns:
+            The descendants of the map element.
+        """
+        descendants = []
+        for child in self.children():
+            descendants.append(child)
+            descendants += child.descendants()
+        return descendants
+
+    def references(self) -> list["MapElement"]:
+        """Return the map elements the map element refers to.
+
+        These are the map elements held by the reference fields of the map
+        element (see `is_reference_field`), directly or as items of a tuple
+        or a frozenset. References of references and references of
+        descendants are not included.
+
+        Returns:
+            The map elements the map element refers to.
+        """
+        references = []
+        for field in dataclasses.fields(self):
+            if is_reference_field(type(self), field.name):
+                references += get_field_map_elements(getattr(self, field.name))
+        return references
+
+
+def is_reference_field(cls: type, field_name: str) -> bool:
+    """Return whether a field of a map element class refers to another element.
+
+    A field refers to another element when a class of `cls.__mro__` that
+    declares the field marks it with `"reference": True` in its metadata, so a
+    subclass that declares the field again needs no mark.
+
+    Args:
+        cls: The map element class.
+        field_name: The name of the field.
+
+    Returns:
+        `True` if the field is a reference field, `False` otherwise.
+    """
+    for base in cls.__mro__:
+        field = base.__dict__.get("__dataclass_fields__", {}).get(field_name)
+        if field is not None and field.metadata.get("reference", False):
+            return True
+    return False
+
+
+def get_field_map_elements(field_value: typing.Any) -> list[MapElement]:
+    """Return the map elements held by a field value.
+
+    Args:
+        field_value: The field value.
+
+    Returns:
+        The value itself if it is a map element, its items that are map
+        elements if it is a tuple or a frozenset, and an empty list otherwise.
+    """
+    if isinstance(field_value, MapElement):
+        return [field_value]
+    if isinstance(field_value, (tuple, frozenset)):
+        return [item for item in field_value if isinstance(item, MapElement)]
+    return []
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ModelElement(MapElement):
@@ -87,62 +174,6 @@ class ModelElement(MapElement):
 
     Common ancestor of every element carrying the semantic information of a map.
     """
-
-    def descendants(self) -> list["ModelElement"]:
-        """Return every `ModelElement` reachable from `self`, excluding `self`.
-
-        This reflectively walks the dataclass field-graph (i.e. *reference
-        reachability*) across scalar `ModelElement` fields and
-        `frozenset`/`tuple` containers, deduplicating by object identity. A
-        model element referenced by several parents therefore appears once.
-
-        Note the deliberate contrast with
-        [`LayoutElement.descendants`][momapy.core.elements.LayoutElement.descendants],
-        which instead walks the explicit `children()` tree (visual
-        *containment*): there a layout element contained under two parents is
-        reached through each, with no identity dedup.
-
-        Returns:
-            The list of reachable `ModelElement` instances in visit
-            order, without `self`.
-        """
-        seen: set[int] = {id(self)}
-        result: list[ModelElement] = []
-        if dataclasses.is_dataclass(self):
-            for field in dataclasses.fields(type(self)):
-                _walk_model_graph(getattr(self, field.name), seen, result)
-        return result
-
-
-def _walk_model_graph(
-    value: object,
-    seen: set[int],
-    result: list[ModelElement],
-) -> None:
-    """Traverse a model-graph value, appending `ModelElement`s to `result`.
-
-    Dedup is by object identity (`id()`).  Walks scalar `ModelElement`
-    fields and `frozenset`/`tuple` containers.  Non-`ModelElement`
-    scalars and other field types are ignored.
-
-    Args:
-        value: The value to traverse.  May be a `ModelElement`, a
-            `frozenset`/`tuple` of values, or anything else (ignored).
-        seen: Set of object ids already visited, updated in place.
-        result: List of visited `ModelElement`s, appended in place.
-    """
-    if isinstance(value, ModelElement):
-        if id(value) in seen:
-            return
-        seen.add(id(value))
-        result.append(value)
-        if not dataclasses.is_dataclass(value):
-            return
-        for field in dataclasses.fields(type(value)):
-            _walk_model_graph(getattr(value, field.name), seen, result)
-    elif isinstance(value, (frozenset, tuple)):
-        for item in value:
-            _walk_model_graph(item, seen, result)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -171,32 +202,6 @@ class LayoutElement(MapElement, abc.ABC):
     def childless(self) -> typing_extensions.Self:
         """Return a copy of the layout element with no children."""
         pass
-
-    def descendants(self) -> list["LayoutElement"]:
-        """Return the descendants of the layout element.
-
-        This walks the explicit `children()` tree (i.e. visual
-        *containment*) depth-first, returning every layout element in the
-        contained subtree (without `self`).
-
-        Note the deliberate contrast with
-        [`ModelElement.descendants`][momapy.core.elements.ModelElement.descendants]
-        and [`Model.descendants`][momapy.core.model.Model.descendants],
-        which reflectively walk the dataclass field-graph (i.e. *reference
-        reachability*) and deduplicate by object identity. A model element
-        referenced by several parents therefore appears once across the
-        model graph, whereas layout descendants are strictly the contained
-        subtree and a layout element contained under two parents is reached
-        through each.
-
-        Returns:
-            The list of descendant layout elements in visit order.
-        """
-        descendants = []
-        for child in self.children():
-            descendants.append(child)
-            descendants += child.descendants()
-        return descendants
 
     def flattened(self) -> list["LayoutElement"]:
         """Return a list containing copy of the layout element with no children and all its descendants with no children."""

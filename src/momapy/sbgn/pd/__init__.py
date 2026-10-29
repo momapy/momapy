@@ -7,8 +7,9 @@ This section lists, for each model-element category in SBGN-PD, the shape
 of the corresponding key in [LayoutModelMapping][momapy.core.LayoutModelMapping].
 See [LayoutModelMapping][momapy.core.LayoutModelMapping] for the general concepts
 (singleton keys, frozenset keys, representatives).
-The keys can be computed from a plain ``{layout_element: model_element}``
-dict by ``momapy.sbgn.utils.make_pd_map_from_map_elements``.
+``momapy.core.make_map`` computes the keys from the
+``(layout_element, model_element)`` pairs, with the rules of
+``momapy.core.make_layout_model_mapping``.
 
 Singleton keys (one layout element represents the model element):
 
@@ -20,10 +21,6 @@ Singleton keys (one layout element represents the model element):
 | [StateVariable][momapy.sbgn.pd.StateVariable] | [StateVariableLayout][momapy.sbgn.pd.StateVariableLayout] |
 | [UnitOfInformation][momapy.sbgn.pd.UnitOfInformation] | [UnitOfInformationLayout][momapy.sbgn.pd.UnitOfInformationLayout] |
 | [Submap][momapy.sbgn.pd.Submap] | [SubmapLayout][momapy.sbgn.pd.SubmapLayout] |
-| [Reactant][momapy.sbgn.pd.Reactant] | [ConsumptionLayout][momapy.sbgn.pd.ConsumptionLayout] |
-| [Product][momapy.sbgn.pd.Product] | [ProductionLayout][momapy.sbgn.pd.ProductionLayout] |
-| [LogicalOperatorInput][momapy.sbgn.pd.LogicalOperatorInput] | [LogicArcLayout][momapy.sbgn.pd.LogicArcLayout] |
-| [TagReference][momapy.sbgn.pd.TagReference], [TerminalReference][momapy.sbgn.pd.TerminalReference] | [EquivalenceArcLayout][momapy.sbgn.pd.EquivalenceArcLayout] |
 | [Phenotype][momapy.sbgn.pd.Phenotype] | [PhenotypeLayout][momapy.sbgn.pd.PhenotypeLayout] |
 
 Frozenset keys (a cluster of layout elements jointly represents the
@@ -33,14 +30,25 @@ on its own and must be passed as ``representative=`` when calling
 
 | Model element | Members of the frozenset key | Representative |
 |---|---|---|
-| [Process][momapy.sbgn.pd.Process] and subclasses (e.g. [StoichiometricProcess][momapy.sbgn.pd.StoichiometricProcess], [GenericProcess][momapy.sbgn.pd.GenericProcess], [UncertainProcess][momapy.sbgn.pd.UncertainProcess], [Association][momapy.sbgn.pd.Association], [Dissociation][momapy.sbgn.pd.Dissociation], [OmittedProcess][momapy.sbgn.pd.OmittedProcess]) | The process `*Layout` (e.g. [GenericProcessLayout][momapy.sbgn.pd.GenericProcessLayout], [AssociationLayout][momapy.sbgn.pd.AssociationLayout], [DissociationLayout][momapy.sbgn.pd.DissociationLayout]) + every [ConsumptionLayout][momapy.sbgn.pd.ConsumptionLayout] and [ProductionLayout][momapy.sbgn.pd.ProductionLayout] attached to the process + every target layout (the entity-pool layouts those arcs point to) | The process `*Layout` |
-| [LogicalOperator][momapy.sbgn.pd.LogicalOperator] and subclasses (e.g. [AndOperator][momapy.sbgn.pd.AndOperator], [OrOperator][momapy.sbgn.pd.OrOperator], [NotOperator][momapy.sbgn.pd.NotOperator]) | The operator `*Layout` (e.g. [AndOperatorLayout][momapy.sbgn.pd.AndOperatorLayout], [OrOperatorLayout][momapy.sbgn.pd.OrOperatorLayout]) + every [LogicArcLayout][momapy.sbgn.pd.LogicArcLayout] input + every target layout those logic arcs point to | The operator `*Layout` |
-| [Modulation][momapy.sbgn.pd.Modulation] and subclasses (e.g. [Stimulation][momapy.sbgn.pd.Stimulation], [Inhibition][momapy.sbgn.pd.Inhibition], [Catalysis][momapy.sbgn.pd.Catalysis], [NecessaryStimulation][momapy.sbgn.pd.NecessaryStimulation]) | The modulation arc layout (e.g. [ModulationLayout][momapy.sbgn.pd.ModulationLayout], [StimulationLayout][momapy.sbgn.pd.StimulationLayout], [InhibitionLayout][momapy.sbgn.pd.InhibitionLayout]) + all layouts in the source cluster (resolved via the source's own frozenset key if it has one, else the source layout itself) + all layouts in the target cluster (resolved the same way) | The modulation arc layout |
-| [Tag][momapy.sbgn.pd.Tag] or [Terminal][momapy.sbgn.pd.Terminal] carrying [TagReference][momapy.sbgn.pd.TagReference] or [TerminalReference][momapy.sbgn.pd.TerminalReference] arcs | The [TagLayout][momapy.sbgn.pd.TagLayout] or [TerminalLayout][momapy.sbgn.pd.TerminalLayout] + every [EquivalenceArcLayout][momapy.sbgn.pd.EquivalenceArcLayout] reference arc + every referenced entity layout | The [TagLayout][momapy.sbgn.pd.TagLayout] or [TerminalLayout][momapy.sbgn.pd.TerminalLayout] |
+| [Process][momapy.sbgn.pd.Process] and subclasses (e.g. [StoichiometricProcess][momapy.sbgn.pd.StoichiometricProcess], [GenericProcess][momapy.sbgn.pd.GenericProcess], [UncertainProcess][momapy.sbgn.pd.UncertainProcess], [Association][momapy.sbgn.pd.Association], [Dissociation][momapy.sbgn.pd.Dissociation], [OmittedProcess][momapy.sbgn.pd.OmittedProcess]) | The process `*Layout` (e.g. [GenericProcessLayout][momapy.sbgn.pd.GenericProcessLayout], [AssociationLayout][momapy.sbgn.pd.AssociationLayout], [DissociationLayout][momapy.sbgn.pd.DissociationLayout]) + the keys of every [ConsumptionLayout][momapy.sbgn.pd.ConsumptionLayout] and [ProductionLayout][momapy.sbgn.pd.ProductionLayout] attached to the process (each holds the entity-pool layout it points to) + every arc to an empty set and its [EmptySetLayout][momapy.sbgn.pd.EmptySetLayout] | The process `*Layout` |
+| [LogicalOperator][momapy.sbgn.pd.LogicalOperator] and subclasses (e.g. [AndOperator][momapy.sbgn.pd.AndOperator], [OrOperator][momapy.sbgn.pd.OrOperator], [NotOperator][momapy.sbgn.pd.NotOperator]) | The operator `*Layout` (e.g. [AndOperatorLayout][momapy.sbgn.pd.AndOperatorLayout], [OrOperatorLayout][momapy.sbgn.pd.OrOperatorLayout]) + the keys of every [LogicArcLayout][momapy.sbgn.pd.LogicArcLayout] input (each holds the key of the layout it points to, the whole key of an inner logical operator) | The operator `*Layout` |
+| [Modulation][momapy.sbgn.pd.Modulation] and subclasses (e.g. [Stimulation][momapy.sbgn.pd.Stimulation], [Inhibition][momapy.sbgn.pd.Inhibition], [Catalysis][momapy.sbgn.pd.Catalysis], [NecessaryStimulation][momapy.sbgn.pd.NecessaryStimulation]) | The modulation arc layout (e.g. [ModulationLayout][momapy.sbgn.pd.ModulationLayout], [StimulationLayout][momapy.sbgn.pd.StimulationLayout], [InhibitionLayout][momapy.sbgn.pd.InhibitionLayout]) + the key of its source layout + the key of its target layout | The modulation arc layout |
+| [Tag][momapy.sbgn.pd.Tag] or [Terminal][momapy.sbgn.pd.Terminal] carrying [TagReference][momapy.sbgn.pd.TagReference] or [TerminalReference][momapy.sbgn.pd.TerminalReference] arcs | The [TagLayout][momapy.sbgn.pd.TagLayout] or [TerminalLayout][momapy.sbgn.pd.TerminalLayout] + the keys of every [EquivalenceArcLayout][momapy.sbgn.pd.EquivalenceArcLayout] reference arc (each holds the referenced entity pool layout) | The [TagLayout][momapy.sbgn.pd.TagLayout] or [TerminalLayout][momapy.sbgn.pd.TerminalLayout] |
+| [Reactant][momapy.sbgn.pd.Reactant], [Product][momapy.sbgn.pd.Product] | The [ConsumptionLayout][momapy.sbgn.pd.ConsumptionLayout] or [ProductionLayout][momapy.sbgn.pd.ProductionLayout] + the key of the entity pool layout at its end | The arc layout |
+| [LogicalOperatorInput][momapy.sbgn.pd.LogicalOperatorInput] | The [LogicArcLayout][momapy.sbgn.pd.LogicArcLayout] + the key of the layout at its end (the input entity pool or logical operator) | The arc layout |
+| [TagReference][momapy.sbgn.pd.TagReference], [TerminalReference][momapy.sbgn.pd.TerminalReference] | The [EquivalenceArcLayout][momapy.sbgn.pd.EquivalenceArcLayout] + the key of the entity pool layout at its end | The arc layout |
 
 Standalone [Tag][momapy.sbgn.pd.Tag] and [Terminal][momapy.sbgn.pd.Terminal] instances (with no
 reference arcs) use a singleton key: [TagLayout][momapy.sbgn.pd.TagLayout] or
 [TerminalLayout][momapy.sbgn.pd.TerminalLayout].
+
+A process or logical operator layout with no arc uses a singleton key.
+
+A top-level node with a ``container`` (the compartment layout it is placed
+in) has the key of its container in its key when the container draws the
+compartment of its model element: its key is then a frozenset key, with the
+node as representative. The key of a compartment layout does not hold the
+layouts placed in it.
 
 Empty-set glyphs ([EmptySetLayout][momapy.sbgn.pd.EmptySetLayout]) have no
 model singleton. They are members of the frozenset key of the process they

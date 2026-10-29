@@ -767,13 +767,11 @@ class TestEqualLayoutElements:
     def test_stacked_processes_with_different_models_are_rejected(self, tmp_path):
         path = tmp_path / "stacked_processes.sbgn"
         path.write_text(_STACKED_PROCESSES_SBGN)
-        with pytest.raises(ValueError, match="are equal but draw different model"):
+        with pytest.raises(ValueError, match="are equal"):
             momapy.io.core.read(str(path))
 
-    def test_stacked_glyphs_with_the_same_model_are_read(self, tmp_path):
+    def test_stacked_glyphs_with_the_same_model_are_rejected(self, tmp_path):
         path = tmp_path / "stacked_compartments.sbgn"
         path.write_text(_STACKED_COMPARTMENTS_SBGN)
-        map_ = momapy.io.core.read(str(path)).obj
-        assert len(map_.model.compartments) == 1
-        compartment = next(iter(map_.model.compartments))
-        assert map_.layout_model_mapping.get_mapping(compartment) is not None
+        with pytest.raises(ValueError, match="are equal"):
+            momapy.io.core.read(str(path))

@@ -11,8 +11,9 @@ class SBMLMap(Map):
     """Class for SBML maps.
 
     SBML support is model only: an `SBMLMap` carries an `SBMLModel` and no
-    layout. The inherited `layout` and `layout_model_mapping` fields are
-    always `None`.
+    layout: its `layout` and `layout_model_mapping` fields are typed `None`.
     """
 
     model: SBMLModel | None = None
+    layout: None = None
+    layout_model_mapping: None = None

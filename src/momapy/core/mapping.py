@@ -52,6 +52,16 @@ class LayoutModelMapping(FrozenIdentitySurjectionDict):
     every arc ``source`` and ``target`` and every layout element of the
     mapping must be an object of the layout itself, not an equal copy.
 
+    `momapy.core.make_map` computes the keys from
+    ``(layout_element, model_element)`` pairs (see
+    `momapy.core.make_layout_model_mapping`): an arc that draws a child
+    (a reactant, a product, a logical operator input, a reference) gets a
+    frozenset key holding the arc and the key of the layout element at its
+    end, and a node whose ``container`` draws the compartment of its model
+    element gets a frozenset key holding the key of its container.
+    [get_representative_layout_elements][momapy.core.mapping.LayoutModelMapping.get_representative_layout_elements]
+    gives the layout elements that draw a model element.
+
     See the SBGN-PD, SBGN-AF, and CellDesigner module documentation for
     the per-model-element catalogue of key shapes and representatives.
     """
@@ -109,8 +119,9 @@ class LayoutModelMapping(FrozenIdentitySurjectionDict):
         Computes the intersection of two sets:
 
         - ``S1``: layouts that belong under ``parent_model_element`` — the
-          children of each container layout mapped to the parent, plus the
-          members of each frozenset key mapped to the parent.
+          children of each singleton layout mapped to the parent, plus the
+          members of each frozenset key mapped to the parent and the
+          children of its representatives.
         - ``S2``: layouts that represent ``child_model_element`` — each
           singleton layout mapped to the child, plus the representatives of each
           frozenset key mapped to the child.
@@ -130,9 +141,39 @@ class LayoutModelMapping(FrozenIdentitySurjectionDict):
         for parent_layout in self.inverse.get(id(parent_model_element), ()):
             if isinstance(parent_layout, frozenset):
                 parent_s1 |= parent_layout
-            elif hasattr(parent_layout, "layout_elements"):
-                parent_s1.update(parent_layout.layout_elements)
+                container_layouts = self._representative_to_key.inverse.get(
+                    parent_layout, []
+                )
+            else:
+                container_layouts = [parent_layout]
+            for container_layout in container_layouts:
+                if hasattr(container_layout, "layout_elements"):
+                    parent_s1.update(container_layout.layout_elements)
         return list(parent_s1 & child_s2)
+
+    def get_representative_layout_elements(
+        self, model_element: "ModelElement"
+    ) -> "list[LayoutElement]":
+        """Return the layout elements that draw a model element.
+
+        These are the representatives of the keys mapped to `model_element`:
+        a single key is its own representative. The order is not specified.
+
+        Args:
+            model_element: The model element.
+
+        Returns:
+            The layout elements that draw `model_element`, without duplicates.
+        """
+        layout_element_id_to_layout_element = {}
+        for key in self.inverse.get(id(model_element), ()):
+            if isinstance(key, frozenset):
+                representatives = self._representative_to_key.inverse.get(key, [])
+            else:
+                representatives = [key]
+            for representative in representatives:
+                layout_element_id_to_layout_element[id(representative)] = representative
+        return list(layout_element_id_to_layout_element.values())
 
     def is_submapping(self, other: "LayoutModelMapping") -> bool:
         """Return `True` if the mapping is a submapping of another `LayoutModelMapping`, `False` otherwise."""
@@ -190,7 +231,9 @@ class LayoutModelMappingBuilder(IdentitySurjectionDict, Builder):
 
         If `map_element` is a key (a layout element or frozenset of layout
         elements), returns the model element it maps to. If it is a model
-        element, returns the list of layout keys mapped to it.
+        element, returns the list of layout keys mapped to it. If it is the
+        representative of a frozenset key, returns the model element mapped
+        to that key.
 
         Args:
             map_element: The layout or model element to look up.
@@ -204,6 +247,9 @@ class LayoutModelMappingBuilder(IdentitySurjectionDict, Builder):
         result = self.inverse.get(id(map_element))
         if result:
             return list(result)
+        key = self._representative_to_key.get(map_element)
+        if key is not None:
+            return self[key]
         return None
 
     def get_child_layout_elements(
@@ -223,9 +269,39 @@ class LayoutModelMappingBuilder(IdentitySurjectionDict, Builder):
         for parent_layout in self.inverse.get(id(parent_model_element), ()):
             if isinstance(parent_layout, frozenset):
                 parent_s1 |= parent_layout
-            elif hasattr(parent_layout, "layout_elements"):
-                parent_s1.update(parent_layout.layout_elements)
+                container_layouts = self._representative_to_key.inverse.get(
+                    parent_layout, []
+                )
+            else:
+                container_layouts = [parent_layout]
+            for container_layout in container_layouts:
+                if hasattr(container_layout, "layout_elements"):
+                    parent_s1.update(container_layout.layout_elements)
         return list(parent_s1 & child_s2)
+
+    def get_representative_layout_elements(
+        self, model_element: "ModelElement"
+    ) -> "list[LayoutElement]":
+        """Return the layout elements that draw a model element.
+
+        These are the representatives of the keys mapped to `model_element`:
+        a single key is its own representative. The order is not specified.
+
+        Args:
+            model_element: The model element.
+
+        Returns:
+            The layout elements that draw `model_element`, without duplicates.
+        """
+        layout_element_id_to_layout_element = {}
+        for key in self.inverse.get(id(model_element), ()):
+            if isinstance(key, frozenset):
+                representatives = self._representative_to_key.inverse.get(key, [])
+            else:
+                representatives = [key]
+            for representative in representatives:
+                layout_element_id_to_layout_element[id(representative)] = representative
+        return list(layout_element_id_to_layout_element.values())
 
     def add_mapping(
         self,

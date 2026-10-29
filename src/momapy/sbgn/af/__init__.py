@@ -7,8 +7,9 @@ This section lists, for each model-element category in SBGN-AF, the shape
 of the corresponding key in [LayoutModelMapping][momapy.core.LayoutModelMapping].
 See [LayoutModelMapping][momapy.core.LayoutModelMapping] for the general concepts
 (singleton keys, frozenset keys, representatives).
-The keys can be computed from a plain ``{layout_element: model_element}``
-dict by ``momapy.sbgn.utils.make_af_map_from_map_elements``.
+``momapy.core.make_map`` computes the keys from the
+``(layout_element, model_element)`` pairs, with the rules of
+``momapy.core.make_layout_model_mapping``.
 
 Singleton keys (one layout element represents the model element):
 
@@ -19,8 +20,6 @@ Singleton keys (one layout element represents the model element):
 | [Phenotype][momapy.sbgn.af.Phenotype] | [PhenotypeLayout][momapy.sbgn.af.PhenotypeLayout] |
 | [UnitOfInformation][momapy.sbgn.af.UnitOfInformation] and subclasses (e.g. [MacromoleculeUnitOfInformation][momapy.sbgn.af.MacromoleculeUnitOfInformation], [NucleicAcidFeatureUnitOfInformation][momapy.sbgn.af.NucleicAcidFeatureUnitOfInformation], [SimpleChemicalUnitOfInformation][momapy.sbgn.af.SimpleChemicalUnitOfInformation], [ComplexUnitOfInformation][momapy.sbgn.af.ComplexUnitOfInformation], [UnspecifiedEntityUnitOfInformation][momapy.sbgn.af.UnspecifiedEntityUnitOfInformation], [PerturbationUnitOfInformation][momapy.sbgn.af.PerturbationUnitOfInformation]) | The corresponding `*UnitOfInformationLayout` (e.g. [MacromoleculeUnitOfInformationLayout][momapy.sbgn.af.MacromoleculeUnitOfInformationLayout], [PerturbationUnitOfInformationLayout][momapy.sbgn.af.PerturbationUnitOfInformationLayout]) |
 | [Submap][momapy.sbgn.af.Submap] | [SubmapLayout][momapy.sbgn.af.SubmapLayout] |
-| [LogicalOperatorInput][momapy.sbgn.af.LogicalOperatorInput] | [LogicArcLayout][momapy.sbgn.af.LogicArcLayout] |
-| [TagReference][momapy.sbgn.af.TagReference], [TerminalReference][momapy.sbgn.af.TerminalReference] | [EquivalenceArcLayout][momapy.sbgn.af.EquivalenceArcLayout] |
 
 Frozenset keys (a cluster of layout elements jointly represents the
 model element; the **representative** is the layout that stands for the cluster
@@ -29,13 +28,23 @@ on its own and must be passed as ``representative=`` when calling
 
 | Model element | Members of the frozenset key | Representative |
 |---|---|---|
-| [LogicalOperator][momapy.sbgn.af.LogicalOperator] and subclasses (e.g. [AndOperator][momapy.sbgn.af.AndOperator], [OrOperator][momapy.sbgn.af.OrOperator], [NotOperator][momapy.sbgn.af.NotOperator], [DelayOperator][momapy.sbgn.af.DelayOperator]) | The operator `*Layout` (e.g. [AndOperatorLayout][momapy.sbgn.af.AndOperatorLayout], [DelayOperatorLayout][momapy.sbgn.af.DelayOperatorLayout]) + every [LogicArcLayout][momapy.sbgn.af.LogicArcLayout] input + every target layout those logic arcs point to | The operator `*Layout` |
-| [Influence][momapy.sbgn.af.Influence] and subclasses (e.g. [UnknownInfluence][momapy.sbgn.af.UnknownInfluence], [PositiveInfluence][momapy.sbgn.af.PositiveInfluence], [NegativeInfluence][momapy.sbgn.af.NegativeInfluence], [NecessaryStimulation][momapy.sbgn.af.NecessaryStimulation]) | The influence arc layout (e.g. [UnknownInfluenceLayout][momapy.sbgn.af.UnknownInfluenceLayout], [PositiveInfluenceLayout][momapy.sbgn.af.PositiveInfluenceLayout], [NecessaryStimulationLayout][momapy.sbgn.af.NecessaryStimulationLayout]) + all layouts in the source cluster (resolved via the source's own frozenset key if it has one, else the source layout itself) + all layouts in the target cluster (resolved the same way) | The influence arc layout |
-| [Tag][momapy.sbgn.af.Tag] or [Terminal][momapy.sbgn.af.Terminal] carrying [TagReference][momapy.sbgn.af.TagReference] or [TerminalReference][momapy.sbgn.af.TerminalReference] arcs | The [TagLayout][momapy.sbgn.af.TagLayout] or [TerminalLayout][momapy.sbgn.af.TerminalLayout] + every [EquivalenceArcLayout][momapy.sbgn.af.EquivalenceArcLayout] reference arc + every referenced activity layout | The [TagLayout][momapy.sbgn.af.TagLayout] or [TerminalLayout][momapy.sbgn.af.TerminalLayout] |
+| [LogicalOperator][momapy.sbgn.af.LogicalOperator] and subclasses (e.g. [AndOperator][momapy.sbgn.af.AndOperator], [OrOperator][momapy.sbgn.af.OrOperator], [NotOperator][momapy.sbgn.af.NotOperator], [DelayOperator][momapy.sbgn.af.DelayOperator]) | The operator `*Layout` (e.g. [AndOperatorLayout][momapy.sbgn.af.AndOperatorLayout], [DelayOperatorLayout][momapy.sbgn.af.DelayOperatorLayout]) + the keys of every [LogicArcLayout][momapy.sbgn.af.LogicArcLayout] input (each holds the key of the layout it points to, the whole key of an inner logical operator) | The operator `*Layout` |
+| [Influence][momapy.sbgn.af.Influence] and subclasses (e.g. [UnknownInfluence][momapy.sbgn.af.UnknownInfluence], [PositiveInfluence][momapy.sbgn.af.PositiveInfluence], [NegativeInfluence][momapy.sbgn.af.NegativeInfluence], [NecessaryStimulation][momapy.sbgn.af.NecessaryStimulation]) | The influence arc layout (e.g. [UnknownInfluenceLayout][momapy.sbgn.af.UnknownInfluenceLayout], [PositiveInfluenceLayout][momapy.sbgn.af.PositiveInfluenceLayout], [NecessaryStimulationLayout][momapy.sbgn.af.NecessaryStimulationLayout]) + the key of its source layout + the key of its target layout | The influence arc layout |
+| [Tag][momapy.sbgn.af.Tag] or [Terminal][momapy.sbgn.af.Terminal] carrying [TagReference][momapy.sbgn.af.TagReference] or [TerminalReference][momapy.sbgn.af.TerminalReference] arcs | The [TagLayout][momapy.sbgn.af.TagLayout] or [TerminalLayout][momapy.sbgn.af.TerminalLayout] + the keys of every [EquivalenceArcLayout][momapy.sbgn.af.EquivalenceArcLayout] reference arc (each holds the referenced activity layout) | The [TagLayout][momapy.sbgn.af.TagLayout] or [TerminalLayout][momapy.sbgn.af.TerminalLayout] |
+| [LogicalOperatorInput][momapy.sbgn.af.LogicalOperatorInput] | The [LogicArcLayout][momapy.sbgn.af.LogicArcLayout] + the key of the layout at its end (the input activity or logical operator) | The arc layout |
+| [TagReference][momapy.sbgn.af.TagReference], [TerminalReference][momapy.sbgn.af.TerminalReference] | The [EquivalenceArcLayout][momapy.sbgn.af.EquivalenceArcLayout] + the key of the activity layout at its end | The arc layout |
 
 Standalone [Tag][momapy.sbgn.af.Tag] and [Terminal][momapy.sbgn.af.Terminal] instances (with no
 reference arcs) use a singleton key: [TagLayout][momapy.sbgn.af.TagLayout] or
 [TerminalLayout][momapy.sbgn.af.TerminalLayout].
+
+A process or logical operator layout with no arc uses a singleton key.
+
+A top-level node with a ``container`` (the compartment layout it is placed
+in) has the key of its container in its key when the container draws the
+compartment of its model element: its key is then a frozenset key, with the
+node as representative. The key of a compartment layout does not hold the
+layouts placed in it.
 """
 
 from momapy.sbgn.layout import (

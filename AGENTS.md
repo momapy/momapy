@@ -345,18 +345,25 @@ User-facing reference: see the "Layout-model mapping catalogue" section in the m
 
 Every value in the mapping is a plain model element — there are no tuple values. Keys are either a singleton layout element or a frozenset of layout elements.
 
-- Simple elements (compartments, entity pools, activities): singleton layout key → model element
-- Child elements (state variables, units of information, subunits, modifications, terminals, reactants/products, logical operator inputs, tag/terminal references): singleton layout key → child model element
-- Processes/reactions: **frozenset** key (process layout + participant arcs + participant targets) → process model
-- Logical operators / boolean logic gates: **frozenset** key (operator layout + logic arcs + input targets) → operator model
-- Modulations: **frozenset** key (modulation arc + source frozenset + target frozenset) → modulation model. Uses `representative_to_key` to resolve source/target frozensets.
-- Tag/terminal with references: **frozenset** key (tag/terminal layout + reference arcs + referenced entity layouts) → tag/terminal model
+The keys of a map built by `momapy.core.make_map`, and of an SBGN-ML map read, are computed from the `(layout_element, model_element)` pairs by `momapy.core.make_layout_model_mapping`. The key of a layout element that draws a model element holds the layout element plus the keys of the connected layout elements (arc ends, arcs ending on it, its `Node.container`, nodes it contains) that draw a related element (a descendant of the model element, or an element referred to by it or by a descendant), or that draw nothing and are connected by an arc end. A key with one element is a singleton key, otherwise a frozenset key with the layout element of the pair as representative. In the SBGN catalogues this gives:
+
+- Simple elements (compartments, entity pools, activities) and child elements (state variables, units of information, subunits): singleton layout key → model element; with a container that draws the compartment of the model element, **frozenset** key (layout + key of the container)
+- Arcs that draw a child (reactants/products, logical operator inputs, tag/terminal references): **frozenset** key (arc + key of the layout at its end) → child model element
+- Processes: **frozenset** key (process layout + keys of its participant arcs + arcs to empty sets and their empty set glyphs) → process model; singleton key with no arc
+- Logical operators: **frozenset** key (operator layout + keys of its logic arcs) → operator model; singleton key with no arc
+- Modulations: **frozenset** key (modulation arc + key of its source + key of its target) → modulation model
+- Tag/terminal with references: **frozenset** key (tag/terminal layout + keys of its reference arcs) → tag/terminal model
+
+The CellDesigner reader still builds its keys with its own code (child arcs as singleton keys) until it moves to the shared code.
+
 - A frozenset key has one or more **representatives** registered in the public `representative_to_key` table (a `FrozenSurjectionDict` in the frozen `LayoutModelMapping`, a `SurjectionDict` in the mutable `LayoutModelMappingBuilder`, so `inverse` gives frozenset → representatives in O(1)). A model element drawn several times owns one key per drawn copy, each with its own representative; do not add code that assumes a single key or a single representative
 
 `LayoutModelMapping.get_child_layout_elements(child_model_element, parent_model_element)` is the single helper used to look up the layout elements representing a child under a given parent. It computes the intersection of two sets:
 
-- **S1** (layouts under the parent): children of each container layout mapped to the parent, plus members of each frozenset key mapped to the parent.
+- **S1** (layouts under the parent): children of each singleton layout mapped to the parent, plus members of each frozenset key mapped to the parent and children of its representatives.
 - **S2** (layouts for the child): singleton layouts mapped to the child, plus the representatives of any frozenset keys mapped to the child.
+
+`get_representative_layout_elements(model_element)` gives the layout elements that draw a model element (the representatives of its keys, a singleton key being its own representative); use it, not raw `get_mapping` keys, when the glyphs of a model element are needed.
 
 ## Testing Patterns
 

@@ -209,25 +209,27 @@ write(map_, "tinted.sbgn", writer="sbgnml")
 
 ### Adding a new element
 
-The easy way, for SBGN maps, is to take the map apart, add the new elements, and build it again: `momapy.sbgn.utils.make_pd_map_from_map_elements` (or `make_af_map_from_map_elements`) computes the model collections and every frozenset key from a plain `{layout_element: model_element}` dict, and `get_map_elements_from_pd_map(map_)` gives the parts of an existing map:
+The easy way, for any map class, is to take the map apart, add the new elements, and build it again with `momapy.core.make_map`. It takes the top-level model elements, the top-level layout elements (in drawing order) and the `(layout_element, model_element)` pairs, and computes the model collections and every frozenset key; `get_layout_model_pairs(mapping)` gives the pairs of an existing map:
 
 ```python
-from momapy.sbgn.utils import get_map_elements_from_pd_map, make_pd_map_from_map_elements
+from momapy.core import get_layout_model_pairs, make_map
 
-layout_elements, layout_element_to_model_element, model_elements = get_map_elements_from_pd_map(map_)
-# process_glyph: an element of layout_elements; arc ends must be the layout's own objects
+pairs = get_layout_model_pairs(map_.layout_model_mapping)
+# process_glyph: a layout element of map_; arc ends must be the layout's own objects
+process = map_.layout_model_mapping.get_mapping(process_glyph)
 enzyme_glyph = MacromoleculeLayout(position=Point(100, 50), width=60, height=30)
 catalysis_arc = CatalysisLayout(source=enzyme_glyph, target=process_glyph, segments=(...))
 enzyme = Macromolecule(label="E")
-catalysis = Catalysis(source=enzyme, target=layout_element_to_model_element[process_glyph])
-new_map = make_pd_map_from_map_elements(
-    layout_elements + (enzyme_glyph, catalysis_arc),
-    layout_element_to_model_element | {enzyme_glyph: enzyme, catalysis_arc: catalysis},
-    model_elements,
+catalysis = Catalysis(source=enzyme, target=process)
+new_map = make_map(
+    type(map_),
+    map_.model.children() + [enzyme, catalysis],
+    map_.layout.children() + [enzyme_glyph, catalysis_arc],
+    pairs + [(enzyme_glyph, enzyme), (catalysis_arc, catalysis)],
 )
 ```
 
-`enzyme` is added to `entity_pools` and `catalysis` to `modulations` without being listed. A model element that is changed (e.g. a process with a new reactant) is a new object: replace the old one everywhere it appears in the dict and in `model_elements`. `merge_pd_maps(maps)` merges whole maps.
+Every top-level model element must be listed, and the elements of a pair must be listed elements or their descendants (the same objects). Equal top-level elements become one (the one with the smallest `id_`), and references are made to point to the kept objects. A model element that is changed (e.g. a process with a new reactant) is a new object: replace the old one in the model elements and in the pairs. `momapy.core.merge_maps(maps)` merges whole maps.
 
 By hand, with builders:
 

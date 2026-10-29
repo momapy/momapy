@@ -198,9 +198,9 @@ class TestFrozensetMappings:
                 el for el in frozenset_key if isinstance(el, momapy.core.layout.Arc)
             ]
             for arc in arcs_in_frozenset:
-                if arc not in mapping:
+                participant_model_element = mapping.get_mapping(arc)
+                if participant_model_element is None:
                     continue
-                participant_model_element = mapping[arc]
                 assert not isinstance(participant_model_element, tuple), (
                     f"Participant arc {type(arc).__name__} should map to a plain "
                     f"participant model element, got tuple"
