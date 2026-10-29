@@ -675,6 +675,8 @@ class SkiaRenderer(
                 typeface=skia_typeface,
                 size=font_size,
             )
+            skia_font.setLinearMetrics(True)
+            skia_font.setSubpixel(True)
             self._skia_fonts[
                 (
                     font_family,
