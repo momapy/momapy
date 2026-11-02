@@ -16,8 +16,11 @@ import lxml.objectify
 
 from momapy.builder import new_builder_object
 from momapy.builder import object_from_builder
+from momapy.io._utils import add_child_model_element
+from momapy.io._utils import add_top_level_model_element
 from momapy.io._utils import build_id_mappings
 from momapy.io._utils import get_xml_root_element
+from momapy.io._utils import merge_read_model_elements
 from momapy.io.core import Reader
 from momapy.io.core import ReaderResult
 from momapy.utils import check_file_exists
@@ -36,7 +39,6 @@ from momapy.sbml.io.sbml._reading_model import make_modifier_species_reference
 from momapy.sbml.io.sbml._reading_model import make_reaction
 from momapy.sbml.io.sbml._reading_model import make_species
 from momapy.sbml.io.sbml._reading_model import make_species_reference
-from momapy.sbml.io.sbml._reading_model import register_model_element
 
 
 class SBMLReader(Reader):
@@ -177,6 +179,7 @@ class SBMLReader(Reader):
                 cls._make_and_add_species(reading_context, sbml_species)
             for sbml_reaction in get_reactions(sbml_model):
                 cls._make_and_add_reaction(reading_context, sbml_reaction)
+            merge_read_model_elements(reading_context)
         if return_type == "model":
             obj = object_from_builder(model)
             make_and_add_annotations_and_notes(reading_context, sbml_model, obj)
@@ -221,11 +224,11 @@ class SBMLReader(Reader):
     ) -> typing.Any:
         model_element = make_compartment(reading_context, sbml_compartment)
         model_element = object_from_builder(model_element)
-        model_element = register_model_element(
-            reading_context,
-            model_element,
-            reading_context.model.compartments,
-            sbml_compartment.get("id"),
+        model_element = add_top_level_model_element(
+            reading_context, model_element, sbml_compartment.get("id")
+        )
+        reading_context.sbml_id_to_model_element[sbml_compartment.get("id")] = (
+            model_element
         )
         make_and_add_annotations_and_notes(
             reading_context, sbml_compartment, model_element
@@ -238,12 +241,10 @@ class SBMLReader(Reader):
     ) -> typing.Any:
         model_element = make_species(reading_context, sbml_species)
         model_element = object_from_builder(model_element)
-        model_element = register_model_element(
-            reading_context,
-            model_element,
-            reading_context.model.species,
-            sbml_species.get("id"),
+        model_element = add_top_level_model_element(
+            reading_context, model_element, sbml_species.get("id")
         )
+        reading_context.sbml_id_to_model_element[sbml_species.get("id")] = model_element
         make_and_add_annotations_and_notes(reading_context, sbml_species, model_element)
         return model_element
 
@@ -259,11 +260,11 @@ class SBMLReader(Reader):
         for sbml_modifier in get_modifiers(sbml_reaction):
             cls._make_and_add_modifier(reading_context, sbml_modifier, model_element)
         model_element = object_from_builder(model_element)
-        model_element = register_model_element(
-            reading_context,
-            model_element,
-            reading_context.model.reactions,
-            sbml_reaction.get("id"),
+        model_element = add_top_level_model_element(
+            reading_context, model_element, sbml_reaction.get("id")
+        )
+        reading_context.sbml_id_to_model_element[sbml_reaction.get("id")] = (
+            model_element
         )
         make_and_add_annotations_and_notes(
             reading_context, sbml_reaction, model_element
@@ -280,9 +281,9 @@ class SBMLReader(Reader):
         model_element = make_species_reference(
             reading_context, sbml_species_reference, super_model_element.id_
         )
-        super_model_element.reactants.add(model_element)
-        reading_context.sbml_id_to_model_element[model_element.id_] = model_element
-        return model_element
+        return add_child_model_element(
+            reading_context, model_element, super_model_element.reactants
+        )
 
     @classmethod
     def _make_and_add_product(
@@ -294,9 +295,9 @@ class SBMLReader(Reader):
         model_element = make_species_reference(
             reading_context, sbml_species_reference, super_model_element.id_
         )
-        super_model_element.products.add(model_element)
-        reading_context.sbml_id_to_model_element[model_element.id_] = model_element
-        return model_element
+        return add_child_model_element(
+            reading_context, model_element, super_model_element.products
+        )
 
     @classmethod
     def _make_and_add_modifier(
@@ -308,6 +309,6 @@ class SBMLReader(Reader):
         model_element = make_modifier_species_reference(
             reading_context, sbml_modifier_species_reference, super_model_element.id_
         )
-        super_model_element.modifiers.add(model_element)
-        reading_context.sbml_id_to_model_element[model_element.id_] = model_element
-        return model_element
+        return add_child_model_element(
+            reading_context, model_element, super_model_element.modifiers
+        )

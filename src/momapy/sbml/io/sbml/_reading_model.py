@@ -12,7 +12,6 @@ import lxml.etree
 
 from momapy.builder import new_builder_object
 from momapy.builder import object_from_builder
-from momapy.utils import add_or_replace_element_in_set
 from momapy.sbml.model import Compartment
 from momapy.sbml.model import ModifierSpeciesReference
 from momapy.sbml.model import RDFAnnotation
@@ -126,40 +125,6 @@ def make_and_add_annotations_and_notes(
             reading_context.element_to_notes[model_element].update(notes)
             if source_id is not None:
                 reading_context.source_id_to_notes[source_id].update(notes)
-
-
-def register_model_element(
-    reading_context: "SBMLReadingContext",
-    model_element: typing.Any,
-    collection: typing.Any,
-    id_: str,
-) -> typing.Any:
-    """Add a model element to a collection with id-based deduplication.
-
-    If an equal element already exists in the collection, the one with the
-    smallest ``id_`` is kept. The surviving element is recorded in
-    ``reading_context.sbml_id_to_model_element`` under ``id_`` for cross-ref
-    resolution, and in ``reading_context.xml_id_to_model_element`` so the
-    reader can build the ``ReaderResult`` source-id mappings via
-    ``build_id_mappings``. The surviving element is returned.
-
-    Args:
-        reading_context: The reading context.
-        model_element: The (frozen) element to register.
-        collection: The model collection (e.g. ``model.compartments``).
-        id_: The SBML XML id to register the element under.
-
-    Returns:
-        The surviving model element.
-    """
-    model_element = add_or_replace_element_in_set(
-        model_element,
-        collection,
-        func=lambda element, existing_element: element.id_ < existing_element.id_,
-    )
-    reading_context.sbml_id_to_model_element[id_] = model_element
-    reading_context.xml_id_to_model_element.add(id_, model_element)
-    return model_element
 
 
 def make_compartment(

@@ -287,3 +287,41 @@ class TestSBMLNotesContent:
         # Map-level notes attach to the returned SBMLMap (default
         # return_type="map"), not the SBMLModel.
         assert "SBMLMap" in types_with_notes
+
+
+_EQUAL_COMPARTMENTS_SBML = """<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level2/version4" level="2" version="4">
+  <model id="m">
+    <listOfCompartments>
+      <compartment id="b" name="cell"/>
+      <compartment id="a" name="cell"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="s1" name="X" compartment="b"/>
+    </listOfSpecies>
+  </model>
+</sbml>
+"""
+
+
+class TestSBMLMerging:
+    """Tests for the merging of equal SBML elements."""
+
+    def test_equal_compartments_are_merged(self, tmp_path):
+        file_path = tmp_path / "equal_compartments.xml"
+        file_path.write_text(_EQUAL_COMPARTMENTS_SBML)
+        result = momapy.sbml.io.sbml.reader.SBMLReader.read(file_path)
+        model = result.obj.model
+        assert [compartment.id_ for compartment in model.compartments] == ["a"]
+        compartment = next(iter(model.compartments))
+        species = next(iter(model.species))
+        assert species.compartment is compartment
+        assert list(result.source_id_to_model_element["b"]) == [compartment]
+        assert next(iter(result.source_id_to_model_element["b"])) is compartment
+
+    def test_make_map_with_model_elements_only(self):
+        compartment = momapy.sbml.model.Compartment(id_="c")
+        map_ = momapy.core.map.make_map(momapy.sbml.map.SBMLMap, [compartment])
+        assert map_.layout is None
+        assert map_.layout_model_mapping is None
+        assert next(iter(map_.model.compartments)) is compartment

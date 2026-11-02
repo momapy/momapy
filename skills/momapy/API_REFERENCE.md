@@ -177,7 +177,7 @@ Purpose: reader-side helpers; shared base contexts. Wholly internal (`__all__ = 
 - `ReadingContext` fields for the shared map-element code: `layout_model_pairs` (`list[tuple[LayoutElement, ModelElement]]`, appended by the readers), `top_level_model_elements` (in reading order, before merging), `dropped_and_kept_child_model_elements` (`(dropped_child, kept_child)` pairs of `add_child_model_element`, checked for lost references).
 - `add_top_level_model_element(reading_context, model_element, xml_id) -> ModelElement`: records a top-level element and its xml id; equal ones are merged at the end of reading.
 - `add_child_model_element(reading_context, child, collection) -> ModelElement`: adds a child to its owner's builder set; of equal children the smallest `id_` is kept (the held one on equal ids), and the dropped one and its descendants are replaced right away by their matching descendants in the kept one, in `xml_id_to_model_element` and `layout_model_pairs`.
-- `merge_read_model_elements(reading_context) -> None`: end of reading: merges equal top-level model elements (`momapy.core._assembling.merge_equal_map_elements`), checks the dropped children for lost references, replaces `top_level_model_elements`, the model elements of the pairs and the values of `xml_id_to_model_element` by their new elements, and fills the model builder's collections. The reader then calls `momapy.core.make_layout_model_mapping`. Used by the SBGN-ML reader.
+- `merge_read_model_elements(reading_context) -> None`: end of reading: merges equal top-level model elements (`momapy.core._assembling.merge_equal_map_elements`), checks the dropped children for lost references, replaces `top_level_model_elements`, the model elements of the pairs and the values of `xml_id_to_model_element` by their new elements, and fills the model builder's collections. The SBGN-ML reader then calls `momapy.core._assembling.make_layout_model_mapping`. Used by the SBGN-ML and SBML readers.
 
 ### `src/momapy/io/pickle.py`
 Purpose: format-agnostic pickle reader/writer. Registered as `"pickle"` in `momapy.io`.
@@ -537,16 +537,15 @@ Purpose: concrete SBML model classes and BioModels qualifier enums.
 - **Model**: `SBMLModel(Model)` — **does NOT inherit `SBMLModelElement`**; declares its own `name`, `sbo_term`, `metaid`, plus `compartments`, `species`, `reactions`. `is_submodel(other) -> bool`.
 
 ### `src/momapy/sbml/io/sbml/_reading_context.py`
-- `SBMLReadingContext(momapy.io._utils.ReadingContext)` — adds `sbml_model`, `sbml_id_to_model_element` (SBML id -> frozen model element, for cross-ref resolution).
+- `SBMLReadingContext(momapy.io._utils.ReadingContext)` — adds `sbml_model`, `sbml_id_to_model_element` (SBML id of a compartment, species or reaction -> the model element read for it; used only while reading, to resolve the compartment of a species and the species of a species reference).
 
 ### `src/momapy/sbml/io/sbml/reader.py`
-- `SBMLReader(Reader)` — `check_file(file_path) -> bool`, `read(file_path, return_type="map", with_model=True, with_layout=True, with_annotations=True, with_notes=True, **options) -> ReaderResult`. `return_type="map"` returns an `SBMLMap` (layout `None`), `"model"` returns the `SBMLModel`, `"layout"` raises `NotImplementedError`. Also `_make_empty_map`/`_make_empty_model` and `_make_and_add_*` orchestration classmethods (mirroring SBGN-ML/CellDesigner).
+- `SBMLReader(Reader)` — `check_file(file_path) -> bool`, `read(file_path, return_type="map", with_model=True, with_layout=True, with_annotations=True, with_notes=True, **options) -> ReaderResult`. `return_type="map"` returns an `SBMLMap` (layout `None`), `"model"` returns the `SBMLModel`, `"layout"` raises `NotImplementedError`. Compartments, species and reactions are added with `add_top_level_model_element`, species references with `add_child_model_element`, and equal elements are merged at the end of reading with `merge_read_model_elements`. Also `_make_empty_map`/`_make_empty_model` and `_make_and_add_*` orchestration classmethods (mirroring SBGN-ML/CellDesigner).
 
 ### `src/momapy/sbml/io/sbml/_reading_model.py` (`make_*` internal helpers)
 - `make_annotations(rdf) -> list[RDFAnnotation]`, `make_notes(notes_element) -> list[str]` (shared with SBGN-ML/CellDesigner readers)
 - `make_annotations_from_element(sbml_element)`, `make_notes_from_element(sbml_element)`
 - `make_and_add_annotations_and_notes(reading_context, sbml_element, model_element, source_id=None)`
-- `register_model_element(reading_context, model_element, collection, id_)` — id-based dedup + records in `reading_context.sbml_id_to_model_element`
 - `make_compartment(reading_context, sbml_compartment)`
 - `make_species(reading_context, sbml_species)`
 - `make_reaction(reading_context, sbml_reaction)`
