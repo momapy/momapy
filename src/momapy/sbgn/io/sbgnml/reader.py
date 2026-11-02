@@ -39,6 +39,7 @@ from momapy.utils import check_file_exists
 from momapy.io._utils import add_child_model_element
 from momapy.io._utils import add_top_level_model_element
 from momapy.io._utils import merge_read_model_elements
+from momapy.core._assembling import check_equal_layout_elements
 from momapy.core._assembling import make_layout_model_mapping
 from momapy.io._utils import build_id_mappings
 from momapy.io._utils import get_xml_root_element
@@ -143,6 +144,9 @@ from momapy.sbgn.io.sbgnml._reading_layout import (
 )
 from momapy.sbgn.io.sbgnml._reading_layout import (
     make_unit_of_information as layout_make_unit_of_information,
+)
+from momapy.sbgn.io.sbgnml._reading_layout import (
+    set_container as layout_set_container,
 )
 from momapy.sbgn.io.sbgnml._reading_layout import (
     set_position_and_size as layout_set_position_and_size,
@@ -404,6 +408,14 @@ class _SBGNMLReader(Reader):
                     sbgnml_activity=sbgnml_activity,
                 )
             for sbgnml_logical_operator in reading_context.sbgnml_logical_operators:
+                sbgnml_logical_operator_id = sbgnml_logical_operator.get("id")
+                if (
+                    sbgnml_logical_operator_id
+                    in reading_context.xml_id_to_layout_element
+                    or sbgnml_logical_operator_id
+                    in reading_context.xml_id_to_model_element
+                ):
+                    continue
                 cls._make_and_add_logical_operator(
                     reading_context=reading_context,
                     sbgnml_logical_operator=sbgnml_logical_operator,
@@ -435,12 +447,13 @@ class _SBGNMLReader(Reader):
                 )
             if model is not None:
                 merge_read_model_elements(reading_context)
-                if layout is not None:
+            if layout is not None:
+                check_equal_layout_elements(layout.layout_elements)
+                if model is not None:
                     layout_model_mapping = make_layout_model_mapping(
                         layout.layout_elements,
                         reading_context.layout_model_pairs,
                     )
-            if layout is not None:
                 sbgnml_bbox = getattr(sbgnml_map, "bbox", None)
                 if sbgnml_bbox is not None:
                     layout_set_position_and_size(layout, sbgnml_map)
@@ -535,7 +548,6 @@ class _SBGNMLReader(Reader):
             layout_element = layout_make_compartment(
                 reading_context, sbgnml_compartment
             )
-            auxiliary_units_map_elements = []
             for sbgnml_unit_of_information in get_units_of_information(
                 sbgnml_compartment
             ):
@@ -559,10 +571,10 @@ class _SBGNMLReader(Reader):
                         unit_of_information_layout_element
                     )
                 if model_element is not None and layout_element is not None:
-                    auxiliary_units_map_elements.append(
+                    reading_context.layout_model_pairs.append(
                         (
-                            unit_of_information_model_element,
                             unit_of_information_layout_element,
+                            unit_of_information_model_element,
                         )
                     )
             if model_element is not None:
@@ -585,13 +597,6 @@ class _SBGNMLReader(Reader):
                     sbgnml_compartment.get("id")
                 ] = layout_element
             if model_element is not None and layout_element is not None:
-                for (
-                    auxiliary_unit_model_element,
-                    auxiliary_unit_layout_element,
-                ) in auxiliary_units_map_elements:
-                    reading_context.layout_model_pairs.append(
-                        (auxiliary_unit_layout_element, auxiliary_unit_model_element)
-                    )
                 reading_context.layout_model_pairs.append(
                     (layout_element, model_element)
                 )
@@ -670,7 +675,14 @@ class _SBGNMLReader(Reader):
             layout_element = layout_make_entity_pool_or_subunit(
                 reading_context, sbgnml_entity_pool_or_subunit, layout_element_cls
             )
-            auxiliary_units_map_elements = []
+            if (
+                not is_subunit
+                and model_element_cls is not None
+                and issubclass(model_element_cls, EntityPool)
+            ):
+                layout_set_container(
+                    reading_context, layout_element, sbgnml_entity_pool_or_subunit
+                )
             n_undefined_state_variables = 0
             for sbgnml_state_variable in get_state_variables(
                 sbgnml_entity_pool_or_subunit
@@ -706,11 +718,8 @@ class _SBGNMLReader(Reader):
                         sbgnml_state_variable_id
                     ] = state_variable_layout_element
                 if model_element is not None and layout_element is not None:
-                    auxiliary_units_map_elements.append(
-                        (
-                            state_variable_model_element,
-                            state_variable_layout_element,
-                        )
+                    reading_context.layout_model_pairs.append(
+                        (state_variable_layout_element, state_variable_model_element)
                     )
             for sbgnml_unit_of_information in get_units_of_information(
                 sbgnml_entity_pool_or_subunit
@@ -743,10 +752,10 @@ class _SBGNMLReader(Reader):
                         sbgnml_unit_of_information_id
                     ] = unit_of_information_layout_element
                 if model_element is not None and layout_element is not None:
-                    auxiliary_units_map_elements.append(
+                    reading_context.layout_model_pairs.append(
                         (
-                            unit_of_information_model_element,
                             unit_of_information_layout_element,
+                            unit_of_information_model_element,
                         )
                     )
             for sbgnml_subunit in get_subunits(sbgnml_entity_pool_or_subunit):
@@ -779,24 +788,13 @@ class _SBGNMLReader(Reader):
                         sbgnml_subunit.get("id")
                     ] = subunit_layout_element
                 if model_element is not None and layout_element is not None:
-                    auxiliary_units_map_elements.append(
-                        (
-                            subunit_model_element,
-                            subunit_layout_element,
-                        )
+                    reading_context.layout_model_pairs.append(
+                        (subunit_layout_element, subunit_model_element)
                     )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
             if layout_element is not None:
                 layout_element = object_from_builder(layout_element)
-            if model_element is not None and layout_element is not None:
-                for (
-                    auxiliary_unit_model_element,
-                    auxiliary_unit_layout_element,
-                ) in auxiliary_units_map_elements:
-                    reading_context.layout_model_pairs.append(
-                        (auxiliary_unit_layout_element, auxiliary_unit_model_element)
-                    )
         else:
             model_element = None
             layout_element = None
@@ -817,7 +815,7 @@ class _SBGNMLReader(Reader):
             layout_element = layout_make_activity(
                 reading_context, sbgnml_activity, layout_element_cls
             )
-            auxiliary_units_map_elements = []
+            layout_set_container(reading_context, layout_element, sbgnml_activity)
             for sbgnml_unit_of_information in get_units_of_information(sbgnml_activity):
                 (
                     unit_of_information_model_element,
@@ -847,10 +845,10 @@ class _SBGNMLReader(Reader):
                         sbgnml_unit_of_information_id
                     ] = unit_of_information_layout_element
                 if model_element is not None and layout_element is not None:
-                    auxiliary_units_map_elements.append(
+                    reading_context.layout_model_pairs.append(
                         (
-                            unit_of_information_model_element,
                             unit_of_information_layout_element,
+                            unit_of_information_model_element,
                         )
                     )
             if model_element is not None:
@@ -873,13 +871,6 @@ class _SBGNMLReader(Reader):
                     layout_element
                 )
             if model_element is not None and layout_element is not None:
-                for (
-                    auxiliary_unit_model_element,
-                    auxiliary_unit_layout_element,
-                ) in auxiliary_units_map_elements:
-                    reading_context.layout_model_pairs.append(
-                        (auxiliary_unit_layout_element, auxiliary_unit_model_element)
-                    )
                 reading_context.layout_model_pairs.append(
                     (layout_element, model_element)
                 )
@@ -955,8 +946,6 @@ class _SBGNMLReader(Reader):
             layout_element = layout_make_submap(
                 reading_context, sbgnml_submap, layout_element_cls
             )
-            terminal_map_elements = []
-            reference_map_elements = []
             for sbgnml_terminal in get_terminals(sbgnml_submap):
                 terminal_model = model_make_terminal_or_tag(
                     reading_context, sbgnml_terminal, is_terminal=True
@@ -993,12 +982,8 @@ class _SBGNMLReader(Reader):
                             sbgnml_equivalence_arc_id
                         ] = reference_layout
                     if reference_model is not None and reference_layout is not None:
-                        reference_map_elements.append(
-                            (
-                                reference_model,
-                                reference_layout,
-                                sbgnml_terminal.get("id"),
-                            )
+                        reading_context.layout_model_pairs.append(
+                            (reference_layout, reference_model)
                         )
                 sbgnml_terminal_id = sbgnml_terminal.get("id")
                 if terminal_model is not None:
@@ -1016,12 +1001,8 @@ class _SBGNMLReader(Reader):
                         terminal_layout
                     )
                 if terminal_model is not None and terminal_layout is not None:
-                    terminal_map_elements.append(
-                        (
-                            terminal_model,
-                            terminal_layout,
-                            sbgnml_terminal.get("id"),
-                        )
+                    reading_context.layout_model_pairs.append(
+                        (terminal_layout, terminal_model)
                     )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
@@ -1043,20 +1024,6 @@ class _SBGNMLReader(Reader):
                     layout_element
                 )
             if model_element is not None and layout_element is not None:
-                for (
-                    ref_model,
-                    ref_layout,
-                    _,
-                ) in reference_map_elements:
-                    reading_context.layout_model_pairs.append((ref_layout, ref_model))
-                for (
-                    terminal_model_element,
-                    terminal_layout_element,
-                    _,
-                ) in terminal_map_elements:
-                    reading_context.layout_model_pairs.append(
-                        (terminal_layout_element, terminal_model_element)
-                    )
                 reading_context.layout_model_pairs.append(
                     (layout_element, model_element)
                 )
@@ -1082,7 +1049,6 @@ class _SBGNMLReader(Reader):
             # (references need it as source)
             if tag_layout is not None:
                 tag_layout = object_from_builder(tag_layout)
-            reference_map_elements = []
             for sbgnml_equivalence_arc in get_equivalence_arcs(
                 sbgnml_tag,
                 reading_context.xml_id_to_xml_element,
@@ -1108,7 +1074,9 @@ class _SBGNMLReader(Reader):
                         sbgnml_equivalence_arc_id
                     ] = reference_layout
                 if reference_model is not None and reference_layout is not None:
-                    reference_map_elements.append((reference_model, reference_layout))
+                    reading_context.layout_model_pairs.append(
+                        (reference_layout, reference_model)
+                    )
             if tag_model is not None:
                 tag_model = object_from_builder(tag_model)
                 tag_model = add_top_level_model_element(
@@ -1122,13 +1090,6 @@ class _SBGNMLReader(Reader):
                     tag_layout
                 )
             if tag_model is not None and tag_layout is not None:
-                for (
-                    reference_model_element,
-                    reference_layout_element,
-                ) in reference_map_elements:
-                    reading_context.layout_model_pairs.append(
-                        (reference_layout_element, reference_model_element)
-                    )
                 reading_context.layout_model_pairs.append((tag_layout, tag_model))
         else:
             tag_model = None
@@ -1215,6 +1176,9 @@ class _SBGNMLReader(Reader):
                         reactant_model_element,
                         reactant_layout_element,
                         sbgnml_consumption_arc.get("id"),
+                        reading_context.xml_id_to_xml_element[
+                            sbgnml_consumption_arc.get("source")
+                        ],
                     )
                 )
             for sbgnml_production_arc in sbgnml_production_arcs:
@@ -1232,6 +1196,9 @@ class _SBGNMLReader(Reader):
                         product_model_element,
                         product_layout_element,
                         sbgnml_production_arc.get("id"),
+                        reading_context.xml_id_to_xml_element[
+                            sbgnml_production_arc.get("target")
+                        ],
                     )
                 )
             if model_element is not None:
@@ -1241,20 +1208,29 @@ class _SBGNMLReader(Reader):
                     if participant_map_element[0] is not None
                 ]
                 participant_model_elements = model_merge_participants(
+                    reading_context,
                     [
                         participant_map_element[0]
                         for participant_map_element in participant_map_elements
-                    ]
+                    ],
+                    [
+                        participant_map_element[3]
+                        for participant_map_element in participant_map_elements
+                    ],
                 )
                 for participant_model_element, (
                     _,
                     participant_layout_element,
                     sbgnml_arc_id,
+                    _,
                 ) in zip(participant_model_elements, participant_map_elements):
                     if isinstance(participant_model_element, Reactant):
-                        model_element.reactants.add(participant_model_element)
+                        participants = model_element.reactants
                     else:
-                        model_element.products.add(participant_model_element)
+                        participants = model_element.products
+                    participant_model_element = add_child_model_element(
+                        reading_context, participant_model_element, participants
+                    )
                     reading_context.xml_id_to_model_element.add(
                         sbgnml_arc_id, participant_model_element
                     )
@@ -1409,25 +1385,18 @@ class _SBGNMLReader(Reader):
                 reading_context.xml_id_to_layout_element[
                     sbgnml_logical_operator.get("id")
                 ] = layout_element
-            input_map_elements = []
             sbgnml_logic_arcs = get_logic_arcs(
                 sbgnml_operator=sbgnml_logical_operator,
                 sbgnml_id_to_sbgnml_element=reading_context.xml_id_to_xml_element,
                 sbgnml_glyph_id_to_sbgnml_arcs=reading_context.sbgnml_glyph_id_to_sbgnml_arcs,
             )
             for sbgnml_logic_arc in sbgnml_logic_arcs:
-                input_model_element, input_layout_element = (
-                    cls._make_and_add_logical_operator_input(
-                        reading_context=reading_context,
-                        sbgnml_logic_arc=sbgnml_logic_arc,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_logical_operator_input(
+                    reading_context=reading_context,
+                    sbgnml_logic_arc=sbgnml_logic_arc,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if model_element is not None and layout_element is not None:
-                    input_map_elements.append(
-                        (input_model_element, input_layout_element)
-                    )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
                 model_element = add_top_level_model_element(
@@ -1439,13 +1408,6 @@ class _SBGNMLReader(Reader):
                 reading_context.layout_model_pairs.append(
                     (layout_element, model_element)
                 )
-                for (
-                    input_model_element,
-                    input_layout_element,
-                ) in input_map_elements:
-                    reading_context.layout_model_pairs.append(
-                        (input_layout_element, input_model_element)
-                    )
         else:
             model_element = None
             layout_element = None
@@ -1503,6 +1465,10 @@ class _SBGNMLReader(Reader):
                 reading_context.layout.layout_elements.append(layout_element)
                 reading_context.xml_id_to_layout_element[sbgnml_logic_arc_id] = (
                     layout_element
+                )
+            if model_element is not None and layout_element is not None:
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
                 )
         else:
             model_element = None

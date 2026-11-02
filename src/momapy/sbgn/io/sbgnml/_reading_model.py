@@ -472,27 +472,71 @@ def make_product(
     return model_element
 
 
+def get_owner_model_elements(
+    reading_context: "SBGNMLReadingContext",
+    sbgnml_glyph: "lxml.objectify.ObjectifiedElement",
+) -> tuple["ModelElement", ...]:
+    """Return the model elements of the glyphs that hold a glyph in the file.
+
+    Args:
+        reading_context: The reading context.
+        sbgnml_glyph: The SBGN-ML glyph element.
+
+    Returns:
+        The model elements of the glyph holding `sbgnml_glyph`, of the glyph
+        holding that one, and so on; empty for a top-level glyph.
+    """
+    owner_model_elements = []
+    sbgnml_owner = sbgnml_glyph.getparent()
+    while sbgnml_owner is not None and sbgnml_owner.tag == sbgnml_glyph.tag:
+        owner_model_elements.append(
+            next(
+                iter(
+                    reading_context.xml_id_to_model_element.get(
+                        sbgnml_owner.get("id"), ()
+                    )
+                ),
+                None,
+            )
+        )
+        sbgnml_owner = sbgnml_owner.getparent()
+    return tuple(owner_model_elements)
+
+
 def merge_participants(
+    reading_context: "SBGNMLReadingContext",
     participants: list["ModelElement"],
+    sbgnml_referred_glyphs: list["lxml.objectify.ObjectifiedElement"],
 ) -> list["ModelElement"]:
     """Merge the participants of one process that draw the same participation.
 
-    Participants of the same class that refer to equal elements become one
-    participant, built from the one with the smallest `id_`, whose
-    stoichiometry is the sum of theirs (a participant with no stoichiometry
-    counts as 1). A participant alone in its group is kept as is.
+    Participants of the same class whose referred elements become one element
+    after merging become one participant, built from the one with the
+    smallest `id_`, whose stoichiometry is the sum of theirs (a participant
+    with no stoichiometry counts as 1). A participant alone in its group is
+    kept as is. Two referred elements become one after merging when they are
+    equal and the glyphs that hold their glyphs in the file draw elements
+    that become one after merging, or when both glyphs are top-level.
 
     Args:
+        reading_context: The reading context.
         participants: The frozen participants of the process.
+        sbgnml_referred_glyphs: The glyph of the referred element of each
+            participant, in the same order.
 
     Returns:
         The merged participant of each participant, in the same order.
     """
     groups = {}
-    for participant in participants:
-        groups.setdefault((type(participant), participant.referred_element), []).append(
-            participant
-        )
+    for participant, sbgnml_referred_glyph in zip(participants, sbgnml_referred_glyphs):
+        groups.setdefault(
+            (
+                type(participant),
+                participant.referred_element,
+                get_owner_model_elements(reading_context, sbgnml_referred_glyph),
+            ),
+            [],
+        ).append(participant)
     merged_participants = {}
     for group in groups.values():
         if len(group) == 1:

@@ -145,6 +145,27 @@ def get_label_position(
     return Point(x + width / 2, y + height / 2)
 
 
+def set_container(
+    reading_context: "SBGNMLReadingContext",
+    layout_element: typing.Any,
+    sbgnml_element: "lxml.objectify.ObjectifiedElement",
+) -> None:
+    """Set the container of a layout builder from the `compartmentRef` of a glyph.
+
+    Args:
+        reading_context: The reading context.
+        layout_element: The layout element builder, or None.
+        sbgnml_element: The SBGN-ML glyph element.
+    """
+    if layout_element is None:
+        return
+    sbgnml_compartment_ref = sbgnml_element.get("compartmentRef")
+    if sbgnml_compartment_ref is not None:
+        layout_element.container = reading_context.xml_id_to_layout_element.get(
+            sbgnml_compartment_ref
+        )
+
+
 def make_compartment(
     reading_context: "SBGNMLReadingContext",
     sbgnml_compartment: "lxml.objectify.ObjectifiedElement",

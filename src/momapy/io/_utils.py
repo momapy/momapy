@@ -621,6 +621,8 @@ def add_child_model_element(
         The child the collection holds.
     """
     held_child = get_element_from_collection(child, collection)
+    if held_child is child:
+        return child
     if held_child is None:
         collection.add(child)
         return child

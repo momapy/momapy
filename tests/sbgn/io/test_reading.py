@@ -770,8 +770,280 @@ class TestEqualLayoutElements:
         with pytest.raises(ValueError, match="are equal"):
             momapy.io.core.read(str(path))
 
-    def test_stacked_glyphs_with_the_same_model_are_rejected(self, tmp_path):
+    @pytest.mark.parametrize(
+        "options",
+        [{}, {"return_type": "layout"}, {"with_model": False}],
+    )
+    def test_stacked_glyphs_with_the_same_model_are_rejected(self, tmp_path, options):
         path = tmp_path / "stacked_compartments.sbgn"
         path.write_text(_STACKED_COMPARTMENTS_SBGN)
         with pytest.raises(ValueError, match="are equal"):
+            momapy.io.core.read(str(path), **options)
+
+
+def _make_nested_operators_sbgn(outer_first):
+    outer_glyph = """\
+        <glyph id="outer" class="and">
+            <bbox y="100.0" x="300.0" h="20.0" w="20.0"/>
+            <port id="outer.1" y="110.0" x="290.0"/>
+            <port id="outer.2" y="110.0" x="330.0"/>
+        </glyph>
+"""
+    inner_glyph = """\
+        <glyph id="inner" class="or">
+            <bbox y="200.0" x="200.0" h="20.0" w="20.0"/>
+            <port id="inner.1" y="210.0" x="190.0"/>
+            <port id="inner.2" y="210.0" x="230.0"/>
+        </glyph>
+"""
+    operator_glyphs = (
+        outer_glyph + inner_glyph if outer_first else inner_glyph + outer_glyph
+    )
+    return f"""\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="nested_operators">
+        <glyph id="glyph_a" class="macromolecule">
+            <label text="A"/>
+            <bbox y="40.0" x="0.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="glyph_b" class="macromolecule">
+            <label text="B"/>
+            <bbox y="160.0" x="0.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="glyph_c" class="macromolecule">
+            <label text="C"/>
+            <bbox y="260.0" x="0.0" h="60.0" w="120.0"/>
+        </glyph>
+{operator_glyphs}\
+        <arc id="arc_a" target="outer.1" source="glyph_a" class="logic arc">
+            <start y="70.0" x="120.0"/>
+            <end y="110.0" x="290.0"/>
+        </arc>
+        <arc id="arc_inner" target="outer.1" source="inner.2" class="logic arc">
+            <start y="210.0" x="230.0"/>
+            <end y="110.0" x="290.0"/>
+        </arc>
+        <arc id="arc_b" target="inner.1" source="glyph_b" class="logic arc">
+            <start y="190.0" x="120.0"/>
+            <end y="210.0" x="190.0"/>
+        </arc>
+        <arc id="arc_c" target="inner.1" source="glyph_c" class="logic arc">
+            <start y="290.0" x="120.0"/>
+            <end y="210.0" x="190.0"/>
+        </arc>
+    </map>
+</sbgn>
+"""
+
+
+class TestNestedLogicalOperators:
+    @pytest.mark.parametrize("outer_first", [True, False])
+    @pytest.mark.parametrize("return_type", ["map", "layout"])
+    def test_each_operator_and_logic_arc_is_read_once(
+        self, tmp_path, outer_first, return_type
+    ):
+        path = tmp_path / "nested_operators.sbgn"
+        path.write_text(_make_nested_operators_sbgn(outer_first))
+        obj = momapy.io.core.read(str(path), return_type=return_type).obj
+        layout = obj if return_type == "layout" else obj.layout
+        layout_element_ids = sorted(
+            layout_element.id_ for layout_element in layout.layout_elements
+        )
+        assert layout_element_ids == sorted(
+            [
+                "glyph_a",
+                "glyph_b",
+                "glyph_c",
+                "outer",
+                "inner",
+                "arc_a",
+                "arc_inner",
+                "arc_b",
+                "arc_c",
+            ]
+        )
+        if return_type == "map":
+            operators = obj.model.logical_operators
+            assert len(operators) == 2
+            assert sorted(len(operator.inputs) for operator in operators) == [2, 2]
+
+
+def _make_subunit_reactants_sbgn(second_complex_label):
+    complexes = ""
+    for index, label in [(1, "C"), (2, second_complex_label)]:
+        y = 40.0 + (index - 1) * 160.0
+        complexes += f"""\
+        <glyph id="complex_{index}" class="complex">
+            <label text="{label}"/>
+            <bbox y="{y}" x="0.0" h="120.0" w="160.0"/>
+            <glyph id="subunit_{index}" class="macromolecule">
+                <label text="A"/>
+                <bbox y="{y + 30.0}" x="20.0" h="60.0" w="120.0"/>
+            </glyph>
+        </glyph>
+"""
+    return f"""\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="subunit_reactants">
+{complexes}\
+        <glyph id="glyph_b" class="macromolecule">
+            <label text="B"/>
+            <bbox y="130.0" x="500.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="process" class="process">
+            <bbox y="150.0" x="300.0" h="20.0" w="20.0"/>
+            <port id="process.1" y="160.0" x="290.0"/>
+            <port id="process.2" y="160.0" x="330.0"/>
+        </glyph>
+        <arc id="arc_1" target="process.1" source="subunit_1" class="consumption">
+            <start y="100.0" x="140.0"/>
+            <end y="160.0" x="290.0"/>
+        </arc>
+        <arc id="arc_2" target="process.1" source="subunit_2" class="consumption">
+            <start y="260.0" x="140.0"/>
+            <end y="160.0" x="290.0"/>
+        </arc>
+        <arc id="arc_b" target="glyph_b" source="process.2" class="production">
+            <start y="160.0" x="330.0"/>
+            <end y="160.0" x="500.0"/>
+        </arc>
+    </map>
+</sbgn>
+"""
+
+
+class TestSubunitReactants:
+    def test_subunits_of_equal_complexes_give_one_reactant(self, tmp_path):
+        path = tmp_path / "subunit_reactants.sbgn"
+        path.write_text(_make_subunit_reactants_sbgn("C"))
+        map_ = momapy.io.core.read(str(path)).obj
+        process = next(iter(map_.model.processes))
+        assert len(process.reactants) == 1
+        reactant = next(iter(process.reactants))
+        assert reactant.stoichiometry == 2.0
+        complex_ = next(
+            entity_pool
+            for entity_pool in map_.model.entity_pools
+            if entity_pool.label == "C"
+        )
+        assert reactant.referred_element is next(iter(complex_.subunits))
+
+    def test_subunits_of_unequal_complexes_are_rejected(self, tmp_path):
+        path = tmp_path / "subunit_reactants.sbgn"
+        path.write_text(_make_subunit_reactants_sbgn("D"))
+        with pytest.raises(ValueError, match="would lose a reference"):
             momapy.io.core.read(str(path))
+
+
+_EQUAL_STATE_VARIABLES_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="equal_state_variables">
+        <glyph id="glyph_a" class="macromolecule">
+            <label text="A"/>
+            <bbox y="40.0" x="100.0" h="60.0" w="120.0"/>
+            <glyph id="b" class="state variable">
+                <state value="P" variable="S1"/>
+                <bbox y="32.0" x="110.0" h="16.0" w="20.0"/>
+            </glyph>
+            <glyph id="a" class="state variable">
+                <state value="P" variable="S1"/>
+                <bbox y="32.0" x="190.0" h="16.0" w="20.0"/>
+            </glyph>
+        </glyph>
+    </map>
+</sbgn>
+"""
+
+
+def test_equal_state_variables_with_decreasing_ids(tmp_path):
+    path = tmp_path / "equal_state_variables.sbgn"
+    path.write_text(_EQUAL_STATE_VARIABLES_SBGN)
+    map_ = momapy.io.core.read(str(path)).obj
+    entity_pool = next(iter(map_.model.entity_pools))
+    assert len(entity_pool.state_variables) == 1
+    state_variable = next(iter(entity_pool.state_variables))
+    assert state_variable.id_ == "a_model"
+    glyph = map_.layout.layout_elements[0]
+    for state_variable_glyph in glyph.layout_elements:
+        assert (
+            map_.layout_model_mapping.get_mapping(state_variable_glyph)
+            is state_variable
+        )
+
+
+_CONTAINERS_SBGN = """\
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sbgn xmlns="http://sbgn.org/libsbgn/0.3">
+    <map language="process description" id="containers">
+        <glyph id="compartment" class="compartment">
+            <label text="cell"/>
+            <bbox y="0.0" x="0.0" h="400.0" w="700.0"/>
+        </glyph>
+        <glyph id="glyph_a" class="complex" compartmentRef="compartment">
+            <label text="A"/>
+            <bbox y="40.0" x="40.0" h="120.0" w="160.0"/>
+            <glyph id="subunit" class="macromolecule" compartmentRef="compartment">
+                <label text="S"/>
+                <bbox y="70.0" x="60.0" h="60.0" w="120.0"/>
+            </glyph>
+        </glyph>
+        <glyph id="glyph_b" class="macromolecule">
+            <label text="B"/>
+            <bbox y="40.0" x="500.0" h="60.0" w="120.0"/>
+        </glyph>
+        <glyph id="process" class="process" compartmentRef="compartment">
+            <bbox y="60.0" x="300.0" h="20.0" w="20.0"/>
+            <port id="process.1" y="70.0" x="290.0"/>
+            <port id="process.2" y="70.0" x="330.0"/>
+        </glyph>
+        <arc id="arc_a" target="process.1" source="glyph_a" class="consumption">
+            <start y="70.0" x="200.0"/>
+            <end y="70.0" x="290.0"/>
+        </arc>
+        <arc id="arc_b" target="glyph_b" source="process.2" class="production">
+            <start y="70.0" x="330.0"/>
+            <end y="70.0" x="500.0"/>
+        </arc>
+    </map>
+</sbgn>
+"""
+
+
+class TestContainers:
+    def test_containers_come_from_compartment_ref(self, tmp_path):
+        path = tmp_path / "containers.sbgn"
+        path.write_text(_CONTAINERS_SBGN)
+        layout = momapy.io.core.read(str(path), return_type="layout").obj
+        id_to_layout_element = {
+            layout_element.id_: layout_element
+            for layout_element in layout.layout_elements
+        }
+        compartment_glyph = id_to_layout_element["compartment"]
+        glyph_a = id_to_layout_element["glyph_a"]
+        assert glyph_a.container is compartment_glyph
+        assert id_to_layout_element["glyph_b"].container is None
+        assert id_to_layout_element["process"].container is None
+        assert compartment_glyph.container is None
+        subunit_glyph = next(
+            layout_element
+            for layout_element in glyph_a.layout_elements
+            if layout_element.id_ == "subunit"
+        )
+        assert subunit_glyph.container is None
+
+    def test_activity_containers(self):
+        layout = momapy.io.core.read(AF_FILE, return_type="layout").obj
+        compartment_glyph = next(
+            layout_element
+            for layout_element in layout.layout_elements
+            if layout_element.id_ == "compartment"
+        )
+        contained_ids = sorted(
+            layout_element.id_
+            for layout_element in layout.layout_elements
+            if getattr(layout_element, "container", None) is compartment_glyph
+        )
+        assert contained_ids == ["activity_a", "activity_b", "activity_c", "phenotype"]

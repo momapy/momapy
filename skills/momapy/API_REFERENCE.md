@@ -345,7 +345,8 @@ Purpose: SBGN-AF model classes.
 - `make_activity(reading_context, sbgnml_activity, model_element_cls)`
 - `make_state_variable(reading_context, sbgnml_state_variable, order=None)`
 - `make_unit_of_information(reading_context, sbgnml_unit_of_information, model_element_cls)`
-- `merge_participants(participants) -> list[ModelElement]`: for each participant of one process, the participant of its group (same class, equal referred element); a group of several becomes one participant, built from the smallest `id_`, with the summed stoichiometry (none counts as 1).
+- `get_owner_model_elements(reading_context, sbgnml_glyph) -> tuple[ModelElement, ...]`: the model elements of the glyphs holding a glyph in the file, innermost first; empty for a top-level glyph.
+- `merge_participants(reading_context, participants, sbgnml_referred_glyphs) -> list[ModelElement]`: for each participant of one process, the participant of its group (same class, referred elements that become one after merging: equal, with equal owners given by `get_owner_model_elements` of their glyphs); a group of several becomes one participant, built from the smallest `id_`, with the summed stoichiometry (none counts as 1).
 - (+ ~15 more for processes, flux roles, logical operators, modulations, tags, terminals, submaps, AF influences)
 
 ### `src/momapy/sbgn/io/sbgnml/_reading_layout.py` (`make_*`)
@@ -353,6 +354,7 @@ Purpose: SBGN-AF model classes.
 - `make_points(sbgnml_points) -> list[Point]`, `make_segments(points) -> list[Segment]`, `make_arc_segments(sbgnml_arc, reverse=False) -> list[Segment]`
 - `make_stoichiometry_layout(sbgnml_stoichiometry, layout_element)`
 - `set_connector_lengths(layout_element, sbgnml_element)`, `set_position_and_size(layout_element, sbgnml_glyph)`, `get_label_position(sbgnml_label, default_position) -> Point`
+- `set_container(reading_context, layout_element, sbgnml_element)`: sets the container of a layout builder to the layout element of the glyph named by `compartmentRef` (used for top-level entity pool and activity glyphs only)
 - `make_compartment(reading_context, sbgnml_compartment)`
 - `make_entity_pool_or_subunit(reading_context, sbgnml_entity_pool_or_subunit, layout_element_cls)`
 - (+ ~20 more for processes, arcs, logical operators, auxiliary units, activities, influences)
