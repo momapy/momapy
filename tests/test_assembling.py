@@ -10,7 +10,6 @@ import typing
 
 import pytest
 
-from momapy.core import get_layout_model_pairs
 from momapy.core import make_map
 from momapy.core import merge_maps
 from momapy.core._assembling import check_equal_layout_elements
@@ -568,7 +567,7 @@ class TestMakeMap:
             type(map_),
             map_.model.children(),
             map_.layout.children(),
-            get_layout_model_pairs(map_.layout_model_mapping),
+            map_.layout_model_mapping.get_layout_model_pairs(),
         )
         assert rebuilt_map.model == map_.model
         assert rebuilt_map.layout.layout_elements == map_.layout.layout_elements
@@ -593,7 +592,7 @@ class TestMakeMap:
             type(map_),
             map_.model.children(),
             map_.layout.children(),
-            get_layout_model_pairs(map_.layout_model_mapping),
+            map_.layout_model_mapping.get_layout_model_pairs(),
         )
         assert rebuilt_map.model == map_.model
         assert rebuilt_map.layout.layout_elements == map_.layout.layout_elements

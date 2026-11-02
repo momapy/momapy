@@ -26,12 +26,8 @@ from momapy.core.layout import SingleHeadedArc as SingleHeadedArc
 from momapy.core.layout import DoubleHeadedArc as DoubleHeadedArc
 from momapy.core.layout import Layout as Layout
 
-from momapy.core._assembling import make_map as make_map
-from momapy.core._assembling import merge_maps as merge_maps
-from momapy.core._assembling import get_layout_model_pairs as get_layout_model_pairs
-from momapy.core._assembling import (
-    make_layout_model_mapping as make_layout_model_mapping,
-)
+from momapy.core.map import make_map as make_map
+from momapy.core.map import merge_maps as merge_maps
 
 
 __all__ = [
@@ -56,6 +52,4 @@ __all__ = [
     "Layout",
     "make_map",
     "merge_maps",
-    "get_layout_model_pairs",
-    "make_layout_model_mapping",
 ]

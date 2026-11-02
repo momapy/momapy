@@ -149,6 +149,23 @@ class LayoutModelMapping(FrozenIdentitySurjectionDict):
                 layout_element_id_to_layout_element[id(representative)] = representative
         return list(layout_element_id_to_layout_element.values())
 
+    def get_layout_model_pairs(self) -> list[tuple[LayoutElement, ModelElement]]:
+        """Return the pairs the mapping is made from.
+
+        Returns:
+            A `(key, model_element)` pair for each single key, and a
+            `(representative, model_element)` pair for each representative of
+            each frozenset key.
+        """
+        layout_model_pairs = []
+        for key, model_element in self.items():
+            if isinstance(key, frozenset):
+                for representative in self._representative_to_key.inverse.get(key, []):
+                    layout_model_pairs.append((representative, model_element))
+            else:
+                layout_model_pairs.append((key, model_element))
+        return layout_model_pairs
+
     def is_submapping(self, other: "LayoutModelMapping") -> bool:
         """Return `True` if the mapping is a submapping of another `LayoutModelMapping`, `False` otherwise."""
         return self.items() <= other.items()

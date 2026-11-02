@@ -209,12 +209,12 @@ write(map_, "tinted.sbgn", writer="sbgnml")
 
 ### Adding a new element
 
-The easy way, for any map class, is to take the map apart, add the new elements, and build it again with `momapy.core.make_map`. It takes the top-level model elements, the top-level layout elements (in drawing order) and the `(layout_element, model_element)` pairs, and computes the model collections and every frozenset key; `get_layout_model_pairs(mapping)` gives the pairs of an existing map:
+The easy way, for any map class, is to take the map apart, add the new elements, and build it again with `momapy.core.make_map`. It takes the top-level model elements, the top-level layout elements (in drawing order) and the `(layout_element, model_element)` pairs, and computes the model collections and every frozenset key; `map_.layout_model_mapping.get_layout_model_pairs()` gives the pairs of an existing map:
 
 ```python
-from momapy.core import get_layout_model_pairs, make_map
+from momapy.core import make_map
 
-pairs = get_layout_model_pairs(map_.layout_model_mapping)
+pairs = map_.layout_model_mapping.get_layout_model_pairs()
 # process_glyph: a layout element of map_; arc ends must be the layout's own objects
 process = map_.layout_model_mapping.get_mapping(process_glyph)
 enzyme_glyph = MacromoleculeLayout(position=Point(100, 50), width=60, height=30)
