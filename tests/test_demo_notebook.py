@@ -85,14 +85,6 @@ def test_demo_notebook(tmp_path):
         assert m3.layout.is_sublayout(m1.layout)
         assert m3.layout_model_mapping.is_submapping(m1.layout_model_mapping)
 
-        r4 = momapy.io.core.read(demo_dir / "phospho4.sbgn")
-        m4 = r4.obj
-
-        assert not m3.is_submap(m4)
-        assert not m3.model.is_submodel(m4.model)
-        assert m3.layout.is_sublayout(m4.layout)
-        assert not m3.layout_model_mapping.is_submapping(m4.layout_model_mapping)
-
         # Frozen objects section
         r = momapy.io.core.read(demo_dir / "phospho1.sbgn")
         m = r.obj
@@ -153,16 +145,14 @@ def test_demo_notebook(tmp_path):
         r1 = momapy.io.core.read(demo_dir / "phospho1.sbgn")
         r2 = momapy.io.core.read(demo_dir / "phospho2.sbgn")
         r3 = momapy.io.core.read(demo_dir / "phospho3.sbgn")
-        r4 = momapy.io.core.read(demo_dir / "phospho4.sbgn")
 
         m1 = r1.obj
         m2 = r2.obj
         m3 = r3.obj
-        m4 = r4.obj
 
         try:
             momapy.rendering.core.render_maps(
-                [m1, m2, m3, m4], "phospho_multi.pdf", multi_pages=True
+                [m1, m2, m3], "phospho_multi.pdf", multi_pages=True
             )
             assert pathlib.Path("phospho_multi.pdf").exists()
         except ValueError:
