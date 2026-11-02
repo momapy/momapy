@@ -341,7 +341,7 @@ Writers use a **model-first** approach: iterate model collections in dependency 
 
 ### layout_model_mapping
 
-User-facing reference: see the "Layout-model mapping catalogue" section in the module docstrings of `momapy.sbgn.pd`, `momapy.sbgn.af`, and `momapy.celldesigner.model` (rendered on the corresponding API reference pages). The notes below cover the internals.
+User-facing reference: see the "Layout-model mapping catalogue" section in the module docstrings of `momapy.sbgn.pd`, `momapy.sbgn.af`, and `momapy.celldesigner` (rendered on the corresponding API reference pages). The notes below cover the internals.
 
 Every value in the mapping is a plain model element — there are no tuple values. Keys are either a singleton layout element or a frozenset of layout elements.
 

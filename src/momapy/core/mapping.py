@@ -24,46 +24,20 @@ class LayoutModelMapping(FrozenIdentitySurjectionDict):
     many-to-one mapping whose keys are layout elements and whose values
     are model elements. Two kinds of keys are used:
 
-    - **Singleton key** — a single [LayoutElement][momapy.core.LayoutElement]
-      that represents a model element on its own (a macromolecule
-      glyph, a compartment, a state variable, a modulation arc when
-      no cluster is needed).
-    - **Frozenset key** — a ``frozenset`` of several layout elements
+    - **Singleton key**: a single [LayoutElement][momapy.core.LayoutElement]
+      that represents a model element on its own.
+    - **Frozenset key**: a ``frozenset`` of several layout elements
       that *jointly* represent one model element. Used whenever a
-      model concept is drawn as a cluster of shapes: a process and
-      its participant arcs and target layouts, a logical operator and
-      its input arcs and targets, a modulation arc with its source and
-      target clusters, a tag or terminal with its reference arcs.
+      model concept is drawn as a cluster of shapes.
 
     When the key is a frozenset, it is useful to designate one of the
-    layouts as the **representative** — the element that stands for the cluster
-    on its own. The representative is typically the "central" layout (the
-    process glyph for a process, the operator glyph for a logical
-    operator, the modulation arc for a modulation, the tag glyph for a
-    tag). Representatives are registered through the ``representative`` argument of
+    layouts as the **representative**: the element that stands for the cluster
+    on its own. The representative is typically the "central" layout (e.g., the
+    process glyph for a process). Representatives are registered through the ``representative`` argument of
     [add_mapping][momapy.core.mapping.LayoutModelMappingBuilder.add_mapping]. Once registered,
     [get_mapping][momapy.core.mapping.LayoutModelMapping.get_mapping] resolves the representative back to the model element
-    stored under the frozenset key, and other composite keys can
-    reference the cluster by its representative rather than by the whole
-    frozenset.
-
-    Keys compare by content, like layout elements: two equal layout
-    elements are one key. Writers, however, find arc ends by object, so
-    every arc ``source`` and ``target`` and every layout element of the
-    mapping must be an object of the layout itself, not an equal copy.
-
-    `momapy.core.make_map` computes the keys from
-    ``(layout_element, model_element)`` pairs (see
-    `momapy.core.make_layout_model_mapping`): an arc that draws a child
-    (a reactant, a product, a logical operator input, a reference) gets a
-    frozenset key holding the arc and the key of the layout element at its
-    end, and a node whose ``container`` draws the compartment of its model
-    element gets a frozenset key holding the key of its container.
-    [get_representative_layout_elements][momapy.core.mapping.LayoutModelMapping.get_representative_layout_elements]
-    gives the layout elements that draw a model element.
-
-    See the SBGN-PD, SBGN-AF, and CellDesigner module documentation for
-    the per-model-element catalogue of key shapes and representatives.
+    stored under the frozenset key, and `representative_to_key` gives the
+    frozenset key of a representative.
     """
 
     def __init__(self, *args, **kwargs) -> None:

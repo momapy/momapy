@@ -239,7 +239,7 @@ By hand, with builders:
 4. Register the link in the mapping: `map_builder.layout_model_mapping.add_mapping(layout_element, model_element)`.
 5. When a model element is represented by a **cluster** of layout elements — a process plus its participant arcs and targets, a modulation arc with its source and target clusters, a logical operator and its inputs, a tag or terminal with its reference arcs — the key is a `frozenset` of those layouts. Pass `representative=<layout_element>` to designate the element that stands for the cluster on its own (the process glyph for a process, the modulation arc for a modulation, the operator glyph for a logical operator, the tag glyph for a tag); `get_mapping(representative)` then resolves back to the model element, and other composite keys can reference the cluster by its representative.
 
-   The exact key shape and representative for each model element type is documented at the top of each format's module: see the "Layout-model mapping catalogue" section in `momapy.sbgn.pd`, `momapy.sbgn.af`, and `momapy.celldesigner.model`.
+   The exact key shape and representative for each model element type is documented at the top of each format's module: see the "Layout-model mapping catalogue" section in `momapy.sbgn.pd`, `momapy.sbgn.af`, and `momapy.celldesigner`.
 
 ---
 

@@ -442,6 +442,10 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 SBGN_MAP_PATHS = sorted(
     glob.glob(os.path.join(TEST_DIR, "sbgn", "maps", "*", "*.sbgn"))
 )
+CELLDESIGNER_MAP_PATHS = sorted(
+    glob.glob(os.path.join(TEST_DIR, "celldesigner", "maps", "*.xml"))
+    + glob.glob(os.path.join(TEST_DIR, "celldesigner", "fixtures", "*.xml"))
+)
 
 
 def make_glyph(x, y=0.0, cls=momapy.sbgn.pd.MacromoleculeLayout, layout_elements=()):
@@ -574,6 +578,38 @@ class TestMakeMap:
         )
         model_element_ids = {id(element) for element in rebuilt_map.model.descendants()}
         for model_element in rebuilt_map.layout_model_mapping.values():
+            assert id(model_element) in model_element_ids
+        layout_element_ids = {
+            id(element) for element in rebuilt_map.layout.descendants()
+        }
+        for layout_element in rebuilt_map.layout.descendants():
+            for reference in layout_element.references():
+                assert id(reference) in layout_element_ids
+
+    @pytest.mark.parametrize("path", CELLDESIGNER_MAP_PATHS, ids=os.path.basename)
+    def test_rebuild_read_celldesigner_map(self, path):
+        map_ = momapy.io.core.read(path).obj
+        rebuilt_map = make_map(
+            type(map_),
+            map_.model.children(),
+            map_.layout.children(),
+            get_layout_model_pairs(map_.layout_model_mapping),
+        )
+        assert rebuilt_map.model == map_.model
+        assert rebuilt_map.layout.layout_elements == map_.layout.layout_elements
+        mapping = map_.layout_model_mapping
+        rebuilt_mapping = rebuilt_map.layout_model_mapping
+        assert len(rebuilt_mapping) == len(mapping)
+        for key, model_element in mapping.items():
+            if key in rebuilt_mapping:
+                assert rebuilt_mapping[key] == model_element
+            else:
+                # The reader gives an arc that draws a child a single key.
+                rebuilt_key = rebuilt_mapping.representative_to_key[key]
+                assert key in rebuilt_key
+                assert rebuilt_mapping[rebuilt_key] == model_element
+        model_element_ids = {id(element) for element in rebuilt_map.model.descendants()}
+        for model_element in rebuilt_mapping.values():
             assert id(model_element) in model_element_ids
         layout_element_ids = {
             id(element) for element in rebuilt_map.layout.descendants()

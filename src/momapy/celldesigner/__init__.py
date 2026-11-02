@@ -1,4 +1,25 @@
-"""CellDesigner format support."""
+"""Classes for CellDesigner maps.
+
+Layout-model mapping catalogue
+------------------------------
+
+The table below lists, for each model element category in CellDesigner, the
+layout elements of its key in
+[LayoutModelMapping][momapy.core.LayoutModelMapping].
+
+| Model element | Key | Representative |
+|---|---|---|
+| [Compartment][momapy.celldesigner.Compartment] | The `*Layout` (e.g. [RectangleCompartmentLayout][momapy.celldesigner.RectangleCompartmentLayout]) + the key of its container, if it draws the outside of the compartment | The `*Layout` |
+| [Species][momapy.celldesigner.Species] and subclasses | The `*Layout` (e.g. [GenericProteinLayout][momapy.celldesigner.GenericProteinLayout]) + the key of its container, if it draws the compartment of the species | The `*Layout` |
+| [Modification][momapy.celldesigner.Modification] | The [ModificationLayout][momapy.celldesigner.ModificationLayout] | The [ModificationLayout][momapy.celldesigner.ModificationLayout] |
+| [StructuralState][momapy.celldesigner.StructuralState] | The [StructuralStateLayout][momapy.celldesigner.StructuralStateLayout] | The [StructuralStateLayout][momapy.celldesigner.StructuralStateLayout] |
+| [Reaction][momapy.celldesigner.Reaction] and subclasses | The `*Layout` (e.g. [StateTransitionLayout][momapy.celldesigner.StateTransitionLayout]) + the key of its source layout element, if any + the key of its target layout element, if any + every [DegradedLayout][momapy.celldesigner.DegradedLayout] that is its source or target layout element + the keys of every [ConsumptionLayout][momapy.celldesigner.ConsumptionLayout] and [ProductionLayout][momapy.celldesigner.ProductionLayout] whose source is the `*Layout` + the keys of every modifier `*Layout` (e.g. [CatalysisLayout][momapy.celldesigner.CatalysisLayout]) whose target is the `*Layout` | The `*Layout` |
+| [BooleanLogicGate][momapy.celldesigner.BooleanLogicGate] and subclasses | The `*Layout` (e.g. [AndGateLayout][momapy.celldesigner.AndGateLayout]) + the keys of every [LogicArcLayout][momapy.celldesigner.LogicArcLayout] whose source is the `*Layout` | The `*Layout` |
+| [KnownOrUnknownModulation][momapy.celldesigner.KnownOrUnknownModulation] and subclasses | The `*Layout` (e.g. [PositiveInfluenceLayout][momapy.celldesigner.PositiveInfluenceLayout]) + the key of its source layout element + the key of its target layout element | The `*Layout` |
+| [Reactant][momapy.celldesigner.Reactant], [Product][momapy.celldesigner.Product] | The [ConsumptionLayout][momapy.celldesigner.ConsumptionLayout] or [ProductionLayout][momapy.celldesigner.ProductionLayout] + the key of its target layout element | The [ConsumptionLayout][momapy.celldesigner.ConsumptionLayout] or [ProductionLayout][momapy.celldesigner.ProductionLayout] |
+| [KnownOrUnknownModulator][momapy.celldesigner.KnownOrUnknownModulator] and subclasses | The `*Layout` (e.g. [CatalysisLayout][momapy.celldesigner.CatalysisLayout]) + the key of its source layout element | The `*Layout` |
+| [BooleanLogicGateInput][momapy.celldesigner.BooleanLogicGateInput] | The [LogicArcLayout][momapy.celldesigner.LogicArcLayout] + the key of its target layout element | The [LogicArcLayout][momapy.celldesigner.LogicArcLayout] |
+"""
 
 from momapy.celldesigner.elements import (
     CellDesignerModelElement as CellDesignerModelElement,
