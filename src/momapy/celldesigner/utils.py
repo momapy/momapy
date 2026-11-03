@@ -411,36 +411,20 @@ def set_compartments_to_fit_content(
     sorted_compartments = _sort_compartments_inside_out(
         map_builder.model.compartments, compartment_children_mapping
     )
+    layout_model_mapping = map_builder.layout_model_mapping
     for compartment in sorted_compartments:
-        compartment_layouts = map_builder.get_mapping(compartment)
-        if compartment_layouts is None:
-            continue
-        if not isinstance(compartment_layouts, list):
-            compartment_layouts = [compartment_layouts]
-        for compartment_layout in compartment_layouts:
-            if isinstance(compartment_layout, frozenset):
-                continue
+        for (
+            compartment_layout
+        ) in layout_model_mapping.get_representative_layout_elements(compartment):
             elements = []
             for species in compartment_species_mapping.get(compartment, []):
-                species_layouts = map_builder.get_mapping(species)
-                if species_layouts is None:
-                    continue
-                if not isinstance(species_layouts, list):
-                    species_layouts = [species_layouts]
-                for species_layout in species_layouts:
-                    if isinstance(species_layout, frozenset):
-                        continue
-                    elements.append(species_layout)
+                elements += layout_model_mapping.get_representative_layout_elements(
+                    species
+                )
             for child_compartment in compartment_children_mapping.get(compartment, []):
-                child_layouts = map_builder.get_mapping(child_compartment)
-                if child_layouts is None:
-                    continue
-                if not isinstance(child_layouts, list):
-                    child_layouts = [child_layouts]
-                for child_layout in child_layouts:
-                    if isinstance(child_layout, frozenset):
-                        continue
-                    elements.append(child_layout)
+                elements += layout_model_mapping.get_representative_layout_elements(
+                    child_compartment
+                )
             if elements:
                 set_fit(compartment_layout, elements, xsep, ysep)
                 if compartment_layout.label is not None:
@@ -519,14 +503,11 @@ def set_complexes_to_fit_content(
     for species in map_builder.model.species:
         if not isinstance_or_builder(species, Complex):
             continue
-        species_layouts = map_builder.get_mapping(species)
-        if species_layouts is None:
-            continue
-        if not isinstance(species_layouts, list):
-            species_layouts = [species_layouts]
-        for complex_layout in species_layouts:
-            if isinstance(complex_layout, frozenset):
-                continue
+        for (
+            complex_layout
+        ) in map_builder.layout_model_mapping.get_representative_layout_elements(
+            species
+        ):
             if not isinstance_or_builder(complex_layout, ComplexLayout):
                 continue
             elements = []

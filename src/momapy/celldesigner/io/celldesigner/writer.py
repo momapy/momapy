@@ -100,9 +100,9 @@ class CellDesignerWriter(Writer):
         # emission, so a from-scratch id can never steal a source id's
         # name and round-tripped ids are preserved verbatim.
         reserve_source_xml_ids(writing_context)
-        writing_context.degraded_entries = collect_degraded_entries(writing_context)
         if obj.layout is not None:
             writing_context.layout_order_index = build_layout_order_index(obj.layout)
+        writing_context.degraded_entries = collect_degraded_entries(writing_context)
 
         sbml = make_sbml_document(writing_context)
         tree = lxml.etree.ElementTree(sbml)

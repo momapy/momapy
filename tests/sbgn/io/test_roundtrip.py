@@ -4,6 +4,8 @@ import pytest
 import tempfile
 import os
 import momapy.io.core
+import momapy.builder
+import momapy.sbgn.pd
 import momapy.sbml.model
 
 pytestmark = pytest.mark.slow
@@ -311,3 +313,22 @@ class TestSBGNStoichiometryRoundTrip:
         map2 = momapy.io.core.read(output_file, reader="sbgnml").obj
         assert cardinality_texts(map2) == ["2", "3"]
         assert map1 == map2
+
+
+class TestSBGNEquivalenceOperators:
+    """The SBGN-ML writer does not write equivalence operators."""
+
+    def test_write_equivalence_operator_raises(self, temp_dir):
+        map_ = momapy.io.core.read(
+            os.path.join(SBGN_MAPS_DIR, "glycolysis.sbgn"), reader="sbgnml"
+        ).obj
+        map_builder = momapy.builder.builder_from_object(map_)
+        map_builder.model.equivalence_operators.add(
+            momapy.sbgn.pd.EquivalenceOperator()
+        )
+        with pytest.raises(NotImplementedError):
+            momapy.io.core.write(
+                map_builder.build(),
+                os.path.join(temp_dir, "output.sbgn"),
+                writer="sbgnml-0.3",
+            )

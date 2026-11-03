@@ -777,6 +777,12 @@ class CellDesignerReader(Reader):
                     hypothetical,
                     active,
                 )
+                if super_layout_element is None:
+                    layout_element.container = (
+                        reading_context.xml_id_to_layout_element.get(
+                            cd_species_alias.get("compartmentAlias")
+                        )
+                    )
             else:
                 layout_element = None
             covered_cd_residue_ids = set()

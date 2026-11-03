@@ -68,9 +68,17 @@ class SBGNML0_3Writer(Writer):
 
         Returns:
             WriterResult containing the written object and file path.
+
+        Raises:
+            ValueError: If the map has no model or no layout.
+            NotImplementedError: If the model has equivalence operators.
         """
         if obj.model is None or obj.layout is None:
             raise ValueError("cannot write a map without both a model and a layout")
+        if getattr(obj.model, "equivalence_operators", ()):
+            raise NotImplementedError(
+                "the SBGN-ML writer does not write equivalence operators"
+            )
         check_parent_dir_exists(file_path)
         if element_to_annotations is None:
             element_to_annotations = {}

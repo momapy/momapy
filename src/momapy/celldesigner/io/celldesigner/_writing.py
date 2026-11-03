@@ -13,7 +13,6 @@ import lxml.etree
 
 from momapy.coloring import Color
 from momapy.geometry import Point, Rotation, get_transformation_for_frame
-from momapy.io._utils import choose_compartment_layout
 from momapy.io._utils import make_unique_xml_id
 from momapy.sbml.io.sbml._qualifiers import QUALIFIER_MEMBER_TO_QUALIFIER_ATTRIBUTE
 from momapy.celldesigner.elements import CellDesignerNode
@@ -1336,12 +1335,9 @@ def collect_degraded_entries(writing_context: typing.Any) -> list["DegradedEntry
         flagged_sink = getattr(reaction, "has_external_sink", False)
         if not flagged_source and not flagged_sink:
             continue
-        for layout_key in get_layouts(writing_context, reaction):
-            if not isinstance(layout_key, frozenset):
-                continue
-            reaction_layout = get_reaction_layout(layout_key)
-            if reaction_layout is None:
-                continue
+        for reaction_layout in get_representative_layout_elements(
+            writing_context, reaction
+        ):
             if flagged_source:
                 if is_degraded_layout(reaction_layout.source):
                     entries.append(
@@ -1396,7 +1392,10 @@ def collect_degraded_entries(writing_context: typing.Any) -> list["DegradedEntry
                                     link_arc=arc,
                                 )
                             )
-    return entries
+    return sorted(
+        entries,
+        key=lambda entry: writing_context.layout_order_index[entry.degraded_layout.id_],
+    )
 
 
 def degraded_entries_for_reaction(
@@ -1463,37 +1462,10 @@ def sort_modifications_by_layout(
 def find_any_alias_layout(
     writing_context: typing.Any, species: typing.Any
 ) -> typing.Any:
-    """Find any alias layout for a species, including inside complexes."""
-    # Try direct lookup first
-    for layout_key in get_layouts(writing_context, species):
-        if isinstance(layout_key, frozenset):
-            continue
-        if isinstance(layout_key, CellDesignerNode):
-            return layout_key
-    # Search in layout_model_mapping for this species
-    mapping = get_layout_model_mapping(writing_context)
-    for layout_element in writing_context.map_.layout.layout_elements:
-        if not isinstance(layout_element, CellDesignerNode):
-            continue
-        if not hasattr(layout_element, "layout_elements"):
-            continue
-        # Search children of complexes
-        for child in layout_element.layout_elements:
-            if not isinstance(child, CellDesignerNode):
-                continue
-            model_info = mapping.get_mapping(child)
-            if model_info is species:
-                return child
-            if hasattr(child, "layout_elements"):
-                for grandchild in child.layout_elements:
-                    if not isinstance(
-                        grandchild,
-                        CellDesignerNode,
-                    ):
-                        continue
-                    model_info2 = mapping.get_mapping(grandchild)
-                    if model_info2 is species:
-                        return grandchild
+    """Find the first alias layout of a species in layout order, or None."""
+    for layout_element in get_representative_layout_elements(writing_context, species):
+        if isinstance(layout_element, CellDesignerNode):
+            return layout_element
     return None
 
 
@@ -1634,6 +1606,29 @@ def get_layouts(
     if isinstance(result, list):
         return result
     return [result]
+
+
+def get_representative_layout_elements(
+    writing_context: typing.Any, model_element: typing.Any
+) -> list[typing.Any]:
+    """Return the layout elements that draw a model element, in layout order.
+
+    Args:
+        writing_context: The writing context.
+        model_element: The model element.
+
+    Returns:
+        The representatives of the keys mapped to `model_element`, sorted by
+        their position in the layout.
+    """
+    return sorted(
+        get_layout_model_mapping(writing_context).get_representative_layout_elements(
+            model_element
+        ),
+        key=lambda layout_element: writing_context.layout_order_index[
+            layout_element.id_
+        ],
+    )
 
 
 def get_drawn_species(
@@ -2035,30 +2030,28 @@ def make_celldesigner_list_of_compartment_aliases(
     writing_context: typing.Any,
 ) -> lxml.etree._Element:
     list_elem = make_celldesigner_element("listOfCompartmentAliases")
-    for comp in sorted(
-        writing_context.map_.model.compartments, key=lambda c: c.id_ or ""
-    ):
-        for layout_key in get_layouts(writing_context, comp):
-            if isinstance(layout_key, frozenset):
-                continue
-            if isinstance(layout_key, COMPARTMENT_LAYOUT_CLASSES):
+    for comp in writing_context.map_.model.compartments:
+        for compartment_layout in get_representative_layout_elements(
+            writing_context, comp
+        ):
+            if isinstance(compartment_layout, COMPARTMENT_LAYOUT_CLASSES):
                 alias = make_celldesigner_element(
                     "compartmentAlias",
                     attributes={
-                        "id": get_xml_id(writing_context, layout_key),
+                        "id": get_xml_id(writing_context, compartment_layout),
                         "compartment": get_xml_id(writing_context, comp),
                     },
                 )
-                class_name = compartment_class_name(layout_key)
+                class_name = compartment_class_name(compartment_layout)
                 alias.append(make_celldesigner_element("class", text=class_name))
                 if isinstance(
-                    layout_key,
+                    compartment_layout,
                     (
                         CornerCompartmentLayout,
                         LineCompartmentLayout,
                     ),
                 ):
-                    px, py = compartment_closeup_point(layout_key)
+                    px, py = compartment_closeup_point(compartment_layout)
                     alias.append(
                         make_celldesigner_element(
                             "point",
@@ -2068,11 +2061,12 @@ def make_celldesigner_list_of_compartment_aliases(
                 else:
                     alias.append(
                         make_celldesigner_element(
-                            "bounds", attributes=node_to_bounds_attrs(layout_key)
+                            "bounds",
+                            attributes=node_to_bounds_attrs(compartment_layout),
                         )
                     )
                 # namePoint (label position)
-                label = getattr(layout_key, "label", None)
+                label = getattr(compartment_layout, "label", None)
                 if label is not None:
                     alias.append(
                         make_celldesigner_element(
@@ -2084,9 +2078,11 @@ def make_celldesigner_list_of_compartment_aliases(
                         )
                     )
                 # doubleLine
-                sep = getattr(layout_key, "sep", None)
-                stroke_width = getattr(layout_key, "stroke_width", None)
-                inner_stroke_width = getattr(layout_key, "inner_stroke_width", None)
+                sep = getattr(compartment_layout, "sep", None)
+                stroke_width = getattr(compartment_layout, "stroke_width", None)
+                inner_stroke_width = getattr(
+                    compartment_layout, "inner_stroke_width", None
+                )
                 alias.append(
                     make_celldesigner_element(
                         "doubleLine",
@@ -2102,7 +2098,7 @@ def make_celldesigner_list_of_compartment_aliases(
                 # paint — the reader derives fill as stroke.with_alpha(0.5),
                 # so we write back the stroke color directly to preserve
                 # the original alpha.
-                stroke = getattr(layout_key, "stroke", None)
+                stroke = getattr(compartment_layout, "stroke", None)
                 if isinstance(stroke, Color):
                     paint_color = color_to_cd_hex(stroke)
                 else:
@@ -2119,6 +2115,7 @@ def make_celldesigner_list_of_compartment_aliases(
                     )
                 )
                 list_elem.append(alias)
+    sort_aliases_by_layout_order(list_elem, writing_context.layout_order_index)
     return list_elem
 
 
@@ -2347,7 +2344,9 @@ def collect_complex_aliases(
     if parent_layout is None:
         target_layouts = [
             layout
-            for layout in get_layouts(writing_context, target_complex)
+            for layout in get_representative_layout_elements(
+                writing_context, target_complex
+            )
             if isinstance(layout, ComplexLayout)
         ]
         parent_alias_id = None
@@ -2414,13 +2413,13 @@ def make_celldesigner_list_of_species_aliases(
             continue
         if id(species) in writing_context.subunit_to_complex:
             continue
-        for layout_key in get_layouts(writing_context, species):
-            if isinstance(layout_key, frozenset):
-                continue
-            if isinstance(layout_key, CellDesignerNode):
+        for layout_element in get_representative_layout_elements(
+            writing_context, species
+        ):
+            if isinstance(layout_element, CellDesignerNode):
                 list_elem.append(
                     make_celldesigner_alias(
-                        writing_context, layout_key, species, "speciesAlias"
+                        writing_context, layout_element, species, "speciesAlias"
                     )
                 )
     # Subunit species (inside complexes), recursively
@@ -2453,13 +2452,10 @@ def make_celldesigner_degraded_alias(
         "id": get_xml_id(writing_context, degraded_layout),
         "species": species_id,
     }
-    compartment_alias_id = find_compartment_alias_id(
-        writing_context,
-        find_degraded_species_compartment(writing_context, degraded_entry),
-        degraded_layout,
-    )
-    if compartment_alias_id is not None:
-        attrs["compartmentAlias"] = compartment_alias_id
+    if degraded_layout.container is not None:
+        attrs["compartmentAlias"] = get_xml_id(
+            writing_context, degraded_layout.container
+        )
     alias = make_celldesigner_element("speciesAlias", attributes=attrs)
     activity_text = (
         "active" if isinstance(degraded_layout, DegradedActiveLayout) else "inactive"
@@ -2529,27 +2525,6 @@ def make_celldesigner_degraded_alias(
     return alias
 
 
-def find_compartment_alias_id(
-    writing_context: typing.Any,
-    compartment: typing.Any,
-    species_layout: typing.Any,
-) -> str | None:
-    """Return the id of the compartment alias the species layout is drawn in."""
-    if compartment is None:
-        return None
-    compartment_layouts = [
-        layout_element
-        for layout_element in get_layouts(writing_context, compartment)
-        if isinstance(layout_element, COMPARTMENT_LAYOUT_CLASSES)
-    ]
-    if not compartment_layouts:
-        return None
-    compartment_layout = choose_compartment_layout(
-        compartment_layouts, species_layout.center()
-    )
-    return get_xml_id(writing_context, compartment_layout)
-
-
 def make_celldesigner_alias(
     writing_context: typing.Any,
     layout: typing.Any,
@@ -2563,12 +2538,8 @@ def make_celldesigner_alias(
     }
     if complex_alias_id is not None:
         attrs["complexSpeciesAlias"] = complex_alias_id
-    elif tag == "speciesAlias" or tag == "complexSpeciesAlias":
-        comp_alias = find_compartment_alias_id(
-            writing_context, model.compartment, layout
-        )
-        if comp_alias is not None:
-            attrs["compartmentAlias"] = comp_alias
+    elif layout.container is not None:
+        attrs["compartmentAlias"] = get_xml_id(writing_context, layout.container)
     alias = make_celldesigner_element(tag, attributes=attrs)
     activity_text = "active" if model.active else "inactive"
     alias.append(make_celldesigner_element("activity", text=activity_text))
@@ -2705,7 +2676,8 @@ def find_residue_angle(
     carries a ``Modification`` for this residue, looking up that
     modification's layout through the layout-model mapping, and
     computing the angle of the badge relative to its containing node.
-    Searches both top-level species and subunits of complexes.
+    Searches both top-level species and subunits of complexes. When several
+    modification layouts are found, the first one in layout order is used.
 
     Args:
         writing_context: The writing context.
@@ -2721,27 +2693,36 @@ def find_residue_angle(
         subunits = getattr(species, "subunits", None)
         if subunits:
             all_species.extend(collect_subunits(species))
+    candidates = []
     for species in all_species:
         if getattr(species, "template", None) is not template:
             continue
         for modification in getattr(species, "modifications", None) or ():
             if modification.residue is not residue:
                 continue
-            # The modification's layout(s) are registered in the mapping;
-            # find the one living under one of the species' alias nodes
-            # and measure its angle relative to that node.
             modification_layouts = set(
                 mapping.get_child_layout_elements(modification, species)
             )
-            if not modification_layouts:
-                continue
-            for layout_key in get_layouts(writing_context, species):
-                if not isinstance(layout_key, CellDesignerNode):
+            for species_layout in get_representative_layout_elements(
+                writing_context, species
+            ):
+                if not isinstance(species_layout, CellDesignerNode):
                     continue
-                for child in layout_key.layout_elements or ():
+                for child in species_layout.layout_elements or ():
                     if child in modification_layouts:
-                        return str(compute_cd_angle(child.position, layout_key))
-    return "0.0"
+                        candidates.append(
+                            (
+                                writing_context.layout_order_index[child.id_],
+                                child,
+                                species_layout,
+                            )
+                        )
+    if not candidates:
+        return "0.0"
+    _, modification_layout, species_layout = min(
+        candidates, key=lambda candidate: candidate[0]
+    )
+    return str(compute_cd_angle(modification_layout.position, species_layout))
 
 
 def collect_subunits(species: typing.Any) -> list[typing.Any]:
@@ -3605,12 +3586,9 @@ def make_celldesigner_reaction(
                         else None
                     )
                     if alias_layout is None:
-                        for layout_key in get_layouts(writing_context, input_species):
-                            if isinstance(layout_key, frozenset):
-                                continue
-                            if isinstance(layout_key, CellDesignerNode):
-                                alias_layout = layout_key
-                                break
+                        alias_layout = find_any_alias_layout(
+                            writing_context, input_species
+                        )
                     alias_id = get_alias_id(writing_context, alias_layout)
                     modifier_species_reference = make_lxml_element(
                         "modifierSpeciesReference",
@@ -3630,9 +3608,19 @@ def make_celldesigner_reaction(
                     list_of_modifiers.append(modifier_species_reference)
                 continue
             sbml_species = writing_context.subunit_to_complex.get(id(species), species)
-            for index, modifier_arc in enumerate(
-                modifier_to_arcs.get(id(modifier), [None])
-            ):
+            modifier_arcs = modifier_to_arcs.get(id(modifier), [None])
+            metaid_arc = next(
+                (
+                    modifier_arc
+                    for modifier_arc in modifier_arcs
+                    if modifier_arc is not None
+                    and modifier_arc.id_ == f"{modifier.metaid}_layout"
+                ),
+                None,
+            )
+            if metaid_arc is None and not has_several_copies:
+                metaid_arc = modifier_arcs[0]
+            for modifier_arc in modifier_arcs:
                 if modifier_arc is not None:
                     alias_layout = modifier_arc.source
                 else:
@@ -3648,7 +3636,7 @@ def make_celldesigner_reaction(
                     "species": get_species_id(sbml_species, writing_context)
                 }
                 if modifier.metaid is not None:
-                    if index == 0:
+                    if modifier_arc is metaid_arc:
                         modifier_reference_attributes["metaid"] = get_xml_id(
                             writing_context,
                             modifier,
@@ -4853,12 +4841,7 @@ def make_celldesigner_gate_modifications(
                 else None
             )
         if alias_layout is None:
-            for layout_key in get_layouts(writing_context, input_species):
-                if isinstance(layout_key, frozenset):
-                    continue
-                if isinstance(layout_key, CellDesignerNode):
-                    alias_layout = layout_key
-                    break
+            alias_layout = find_any_alias_layout(writing_context, input_species)
         input_alias_ids.append(get_alias_id(writing_context, alias_layout))
         drawn_species = get_drawn_species(writing_context, alias_layout, input_species)
         input_species_ids.append(get_species_id(drawn_species, writing_context))
@@ -4954,7 +4937,9 @@ def make_celldesigner_modulation_reaction(
     target = modulation.target
 
     if isinstance(source, BooleanLogicGate):
-        return make_celldesigner_gate_modulation_reaction(writing_context, modulation)
+        return make_celldesigner_gate_modulation_reaction(
+            writing_context, modulation, frozenset_mapping
+        )
 
     # Resolve layouts from the given frozenset
     modulation_layout = None
@@ -4998,20 +4983,10 @@ def make_celldesigner_modulation_reaction(
         reaction_element.append(notes_element)
 
     if source_layout is None and source is not None:
-        for layout_key in get_layouts(writing_context, source):
-            if isinstance(layout_key, frozenset):
-                continue
-            if isinstance(layout_key, CellDesignerNode):
-                source_layout = layout_key
-                break
+        source_layout = find_any_alias_layout(writing_context, source)
 
     if target_layout is None and target is not None:
-        for layout_key in get_layouts(writing_context, target):
-            if isinstance(layout_key, frozenset):
-                continue
-            if isinstance(layout_key, CellDesignerNode):
-                target_layout = layout_key
-                break
+        target_layout = find_any_alias_layout(writing_context, target)
 
     source_alias = get_alias_id(writing_context, source_layout)
     target_alias = get_alias_id(writing_context, target_layout)
@@ -5172,12 +5147,16 @@ def make_celldesigner_modulation_reaction(
 
 
 def make_celldesigner_gate_modulation_reaction(
-    writing_context: typing.Any, modulation: typing.Any
+    writing_context: typing.Any, modulation: typing.Any, frozenset_mapping: typing.Any
 ) -> lxml.etree._Element:
-    """Build a boolean gate modulation as a fake SBML reaction.
+    """Build one drawing of a boolean gate modulation as a fake SBML reaction.
 
     Structure: reactionType=BOOLEAN_LOGIC_GATE, baseReactants=gate inputs,
-    baseProducts=target, listOfGateMember for gate+per-input entries.
+    baseProducts=target, listOfGateMember for gate+per-input entries. The
+    modulation arc, the gate layout and the logic arcs come from
+    `frozenset_mapping`, the key of the drawing (None when the modulation is
+    not drawn). Each input of the gate is written once per logic arc drawing
+    it, or once with any alias of its species when it has no logic arc.
     """
     gate = modulation.source
     target = modulation.target
@@ -5193,7 +5172,34 @@ def make_celldesigner_gate_modulation_reaction(
     # Determine the modification type from the modulation type
     modifier_type = get_modulation_reaction_type(modulation)
 
-    modulation_id = get_xml_id(writing_context, modulation)
+    mapping = get_layout_model_mapping(writing_context)
+    modulation_layout = None
+    gate_layout = None
+    logic_arcs = []
+    if frozenset_mapping is not None:
+        for layout_element in frozenset_mapping:
+            if mapping.get_mapping(layout_element) is modulation:
+                modulation_layout = layout_element
+                break
+        gate_layout = modulation_layout.source
+        logic_arcs = sorted(
+            (
+                layout_element
+                for layout_element in frozenset_mapping
+                if isinstance(layout_element, LogicArcLayout)
+                and layout_element.source is gate_layout
+            ),
+            key=lambda logic_arc: writing_context.layout_order_index[logic_arc.id_],
+        )
+
+    if modulation_layout is not None:
+        modulation_id = get_xml_id(
+            writing_context,
+            modulation_layout,
+            candidate=modulation_layout.id_.removesuffix("_layout"),
+        )
+    else:
+        modulation_id = get_xml_id(writing_context, modulation)
     attrs = {
         "metaid": modulation_id,
         "id": modulation_id,
@@ -5206,77 +5212,34 @@ def make_celldesigner_gate_modulation_reaction(
     if notes_element is not None:
         reaction_element.append(notes_element)
 
-    # Find the gate layout
-    gate_layout = None
-    for layout_element_item in writing_context.map_.layout.layout_elements:
-        if isinstance(
-            layout_element_item,
+    input_entries = []
+    drawn_input_ids = set()
+    for logic_arc in logic_arcs:
+        inp = mapping.get_mapping(logic_arc)
+        drawn_input_ids.add(id(inp))
+        input_entries.append(
             (
-                AndGateLayout,
-                OrGateLayout,
-                NotGateLayout,
-                UnknownGateLayout,
-            ),
-        ):
-            gate_model = get_layout_model_mapping(writing_context).get_mapping(
-                layout_element_item
+                get_drawn_species(
+                    writing_context, logic_arc.target, inp.referred_element
+                ),
+                logic_arc.target,
+                logic_arc,
             )
-            if gate_model is gate:
-                gate_layout = layout_element_item
-                break
-
-    # Find inputs via logic arcs (preserves duplicates unlike gate.inputs)
-    input_layouts = []
-    if gate_layout is not None:
-        for layout_element_item in writing_context.map_.layout.layout_elements:
-            if (
-                isinstance(layout_element_item, LogicArcLayout)
-                and layout_element_item.source is gate_layout
-            ):
-                inp_layout = layout_element_item.target
-                model_info = get_layout_model_mapping(writing_context).get_mapping(
-                    inp_layout
+        )
+    for inp in sorted(gate.inputs, key=lambda s: s.id_ or ""):
+        if id(inp) not in drawn_input_ids:
+            input_entries.append(
+                (
+                    inp.referred_element,
+                    find_any_alias_layout(writing_context, inp.referred_element),
+                    None,
                 )
-                inp_model = (
-                    (model_info[0] if isinstance(model_info, tuple) else model_info)
-                    if model_info is not None
-                    else None
-                )
-                if inp_model is not None:
-                    input_layouts.append((inp_model, inp_layout))
-    if not input_layouts:
-        # Fallback to gate.inputs if no logic arcs found
-        for inp in sorted(gate.inputs, key=lambda s: s.id_ or ""):
-            inp_layout = None
-            for layout_key in get_layouts(writing_context, inp.referred_element):
-                if isinstance(layout_key, frozenset):
-                    continue
-                if isinstance(layout_key, CellDesignerNode):
-                    inp_layout = layout_key
-                    break
-            input_layouts.append((inp.referred_element, inp_layout))
+            )
 
-    modulation_layout = None
-    for layout_key in get_layouts(writing_context, modulation):
-        if isinstance(layout_key, frozenset):
-            for elem in layout_key:
-                model = get_layout_model_mapping(writing_context).get_mapping(elem)
-                if model is modulation:
-                    modulation_layout = elem
-                    break
-        elif not isinstance(layout_key, frozenset):
-            modulation_layout = layout_key
-
-    target_layout = None
     if modulation_layout is not None:
         target_layout = modulation_layout.target
-    elif target is not None:
-        for layout_key in get_layouts(writing_context, target):
-            if isinstance(layout_key, frozenset):
-                continue
-            if isinstance(layout_key, CellDesignerNode):
-                target_layout = layout_key
-                break
+    else:
+        target_layout = find_any_alias_layout(writing_context, target)
 
     gate_edit_points = ""
     if gate_layout is not None:
@@ -5293,7 +5256,7 @@ def make_celldesigner_gate_modulation_reaction(
 
     # baseReactants (gate inputs)
     base_reactants_element = make_celldesigner_element("baseReactants")
-    for inp, inp_layout in input_layouts:
+    for inp, inp_layout, logic_arc in input_entries:
         alias_id = get_alias_id(writing_context, inp_layout)
         base_reactant = make_celldesigner_element(
             "baseReactant",
@@ -5302,24 +5265,14 @@ def make_celldesigner_gate_modulation_reaction(
                 "alias": alias_id,
             },
         )
-        # Try to find linkAnchor from logic arcs
-        if gate_layout is not None and inp_layout is not None:
-            for layout_element_item in writing_context.map_.layout.layout_elements:
-                if (
-                    hasattr(layout_element_item, "source")
-                    and hasattr(layout_element_item, "target")
-                    and layout_element_item.source is gate_layout
-                    and layout_element_item.target is inp_layout
-                ):
-                    endpoint = layout_element_item.points()[-1]
-                    anchor = infer_anchor_position(inp_layout, endpoint)
-                    if anchor is not None:
-                        base_reactant.append(
-                            make_celldesigner_element(
-                                "linkAnchor", attributes={"position": anchor}
-                            )
-                        )
-                    break
+        if logic_arc is not None:
+            anchor = infer_anchor_position(inp_layout, logic_arc.points()[-1])
+            if anchor is not None:
+                base_reactant.append(
+                    make_celldesigner_element(
+                        "linkAnchor", attributes={"position": anchor}
+                    )
+                )
         base_reactants_element.append(base_reactant)
     extension.append(base_reactants_element)
 
@@ -5364,7 +5317,7 @@ def make_celldesigner_gate_modulation_reaction(
 
     # connectScheme — gate modulations use rectangleIndex=1
     # and lineDirection count = len(inputs) + 3
-    num_line_directions = len(input_layouts) + 3
+    num_line_directions = len(input_entries) + 3
     connect_scheme = make_celldesigner_element(
         "connectScheme",
         attributes={
@@ -5395,7 +5348,9 @@ def make_celldesigner_gate_modulation_reaction(
 
     # listOfGateMember
     gate_member_list = make_celldesigner_element("listOfGateMember")
-    input_alias_ids = [get_alias_id(writing_context, il) for _, il in input_layouts]
+    input_alias_ids = [
+        get_alias_id(writing_context, inp_layout) for _, inp_layout, _ in input_entries
+    ]
     # Gate entry
     gate_attrs = {
         "type": gate_type,
@@ -5427,7 +5382,7 @@ def make_celldesigner_gate_modulation_reaction(
     gate_member_list.append(gate_member)
 
     # Per-input entries
-    for inp, inp_layout in input_layouts:
+    for inp, inp_layout, logic_arc in input_entries:
         alias_id = get_alias_id(writing_context, inp_layout)
         inp_member = make_celldesigner_element(
             "GateMember",
@@ -5458,30 +5413,19 @@ def make_celldesigner_gate_modulation_reaction(
                 "alias": alias_id,
             },
         )
-        input_arc_layout = None
-        if gate_layout is not None and inp_layout is not None:
-            for layout_element_item in writing_context.map_.layout.layout_elements:
-                if (
-                    hasattr(layout_element_item, "source")
-                    and hasattr(layout_element_item, "target")
-                    and layout_element_item.source is gate_layout
-                    and layout_element_item.target is inp_layout
-                ):
-                    input_arc_layout = layout_element_item
-                    endpoint = layout_element_item.points()[-1]
-                    anchor = infer_anchor_position(inp_layout, endpoint)
-                    if anchor is not None:
-                        link_target.append(
-                            make_celldesigner_element(
-                                "linkAnchor", attributes={"position": anchor}
-                            )
-                        )
-                    break
+        if logic_arc is not None:
+            anchor = infer_anchor_position(inp_layout, logic_arc.points()[-1])
+            if anchor is not None:
+                link_target.append(
+                    make_celldesigner_element(
+                        "linkAnchor", attributes={"position": anchor}
+                    )
+                )
         inp_member.append(link_target)
         inp_member.append(
             make_celldesigner_element(
                 "line",
-                attributes=get_line_attributes(input_arc_layout, include_type=True),
+                attributes=get_line_attributes(logic_arc, include_type=True),
             )
         )
         gate_member_list.append(inp_member)
@@ -5498,13 +5442,13 @@ def make_celldesigner_gate_modulation_reaction(
         writing_context,
         annotation,
         modulation,
-        get_xml_id(writing_context, modulation),
+        modulation_id,
     )
     reaction_element.append(annotation)
 
     # SBML listOfReactants (gate inputs)
     list_of_reactants = make_lxml_element("listOfReactants")
-    for inp, inp_layout in input_layouts:
+    for inp, inp_layout, _ in input_entries:
         sbml_inp = writing_context.subunit_to_complex.get(id(inp), inp)
         alias_id = get_alias_id(writing_context, inp_layout)
         species_reference = make_lxml_element(

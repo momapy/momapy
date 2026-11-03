@@ -6,7 +6,6 @@ of reading, and build the id mappings.  They are not part of the public API.
 
 import collections
 import dataclasses
-import math
 import os
 import typing
 
@@ -24,7 +23,6 @@ from momapy.core.elements import ModelElement
 from momapy.core.layout import Layout
 from momapy.core.map import Map
 from momapy.core.model import Model
-from momapy.geometry import Point
 from momapy.utils import FrozenIdentityMultiDict
 from momapy.utils import FrozenSurjectionDict
 from momapy.utils import IdentityMultiDict
@@ -100,38 +98,6 @@ class WritingContext:
     apart by ``make_unique_xml_id``; a repeated candidate returns its
     earlier result, preserving the pre-projection writers' behaviour of
     emitting ``id_`` verbatim."""
-
-
-def choose_compartment_layout(
-    compartment_layouts: list[LayoutElement], point: Point
-) -> LayoutElement:
-    """Return the compartment layout a point belongs to.
-
-    With one layout, return it. Otherwise return the smallest layout whose
-    bounding box contains the point, or else the nearest one.
-
-    Args:
-        compartment_layouts: The layouts of one compartment (not empty).
-        point: The point, usually the center of a species layout.
-
-    Returns:
-        The chosen compartment layout.
-    """
-    if len(compartment_layouts) == 1:
-        return compartment_layouts[0]
-    best_compartment_layout = None
-    best_key = None
-    for compartment_layout in compartment_layouts:
-        bbox = compartment_layout.bbox()
-        north_west = bbox.north_west()
-        south_east = bbox.south_east()
-        distance_x = max(north_west.x - point.x, 0, point.x - south_east.x)
-        distance_y = max(north_west.y - point.y, 0, point.y - south_east.y)
-        key = (math.hypot(distance_x, distance_y), bbox.width * bbox.height)
-        if best_key is None or key < best_key:
-            best_compartment_layout = compartment_layout
-            best_key = key
-    return best_compartment_layout
 
 
 def make_unique_xml_id(candidate: str, used_xml_ids: set) -> str:

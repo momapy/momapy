@@ -49,10 +49,12 @@ def _find_complex_with_non_complex_subunit(map_):
 
 
 def _find_outer_layout(map_, complex_):
-    for key in map_.layout_model_mapping.inverse.get(id(complex_), ()):
-        if not isinstance(key, frozenset):
-            return key
-    raise RuntimeError(f"no singleton layout for complex {complex_.id_}")
+    layout_elements = map_.layout_model_mapping.get_representative_layout_elements(
+        complex_
+    )
+    if layout_elements:
+        return layout_elements[0]
+    raise RuntimeError(f"no layout for complex {complex_.id_}")
 
 
 def _find_nested_complex_pair(map_):
@@ -284,3 +286,158 @@ class TestDrawnCopiesOfOneReaction:
             element.get("metaid") for element in root.iter() if element.get("metaid")
         ]
         assert len(all_metaids) == len(set(all_metaids))
+
+
+def _replace_once(text, old, new):
+    assert text.count(old) == 1, old
+    return text.replace(old, new)
+
+
+def _get_reaction_block(text, reaction_id):
+    start = text.index(f'<reaction metaid="{reaction_id}"')
+    end = text.index("</reaction>", start) + len("</reaction>")
+    return text[start:end]
+
+
+class TestDrawnCopiesOfOneReactionModifier:
+    """Each drawn copy of a reaction keeps the metaid of its own modifier."""
+
+    def test_each_copy_keeps_its_own_modifier_metaid(self, tmp_path):
+        if not os.path.exists(_NEUROINFLAMMATION):
+            pytest.skip("Neuroinflammation fixture not available")
+        with open(_NEUROINFLAMMATION) as file:
+            text = file.read()
+        modification = (
+            '<celldesigner:modification type="CATALYSIS" modifiers="s_id_ne193"'
+            ' aliases="ne193" targetLineIndex="0,6">'
+            '<celldesigner:connectScheme connectPolicy="direct">'
+            "<celldesigner:listOfLineDirection>"
+            '<celldesigner:lineDirection index="0" value="unknown"/>'
+            "</celldesigner:listOfLineDirection></celldesigner:connectScheme>"
+            '<celldesigner:linkTarget species="s_id_ne193" alias="ne193"/>'
+            '<celldesigner:line width="1.0" color="FF000000" type="Straight"/>'
+            "</celldesigner:modification>"
+        )
+        for reaction_id, metaid in [("ne6db", "MSRB"), ("ne67d", "MSRA")]:
+            block = _get_reaction_block(text, reaction_id)
+            new_block = _replace_once(
+                block,
+                "<celldesigner:listOfModification>\n",
+                f"<celldesigner:listOfModification>\n{modification}\n",
+            )
+            new_block = _replace_once(
+                new_block,
+                "</listOfProducts>",
+                "</listOfProducts><listOfModifiers>"
+                f'<modifierSpeciesReference metaid="{metaid}" species="s_id_ne193">'
+                "<annotation><celldesigner:extension>"
+                "<celldesigner:alias>ne193</celldesigner:alias>"
+                "</celldesigner:extension></annotation>"
+                "</modifierSpeciesReference></listOfModifiers>",
+            )
+            text = _replace_once(text, block, new_block)
+        input_file = tmp_path / "input.xml"
+        input_file.write_text(text)
+        result = momapy.io.core.read(str(input_file))
+        for index, options in enumerate(
+            [
+                {},
+                {
+                    "source_id_to_model_element": result.source_id_to_model_element,
+                    "source_id_to_layout_element": result.source_id_to_layout_element,
+                },
+            ]
+        ):
+            output_file = tmp_path / f"output_{index}.xml"
+            momapy.io.core.write(
+                result.obj, str(output_file), writer="celldesigner", **options
+            )
+            root = lxml.etree.parse(str(output_file)).getroot()
+            sbml_namespace = root.nsmap[None]
+            for reaction_id, metaid in [("ne6db", "MSRB"), ("ne67d", "MSRA")]:
+                reaction = root.find(
+                    f".//{{{sbml_namespace}}}reaction[@id='{reaction_id}']"
+                )
+                modifier_metaids = [
+                    modifier_species_reference.get("metaid")
+                    for modifier_species_reference in reaction.iter(
+                        f"{{{sbml_namespace}}}modifierSpeciesReference"
+                    )
+                ]
+                assert modifier_metaids == [metaid]
+            all_metaids = [
+                element.get("metaid")
+                for element in root.iter()
+                if element.get("metaid")
+            ]
+            assert len(all_metaids) == len(set(all_metaids))
+
+
+class TestCompartmentAliasFromContainer:
+    """`compartmentAlias` is read into and written from the container."""
+
+    def test_compartment_alias_from_container(self, tmp_path):
+        with open(os.path.join(_CD_MAPS_DIR, "Apoptosis_pathway.xml")) as file:
+            text = file.read()
+        text = _replace_once(
+            text,
+            '<celldesigner:speciesAlias id="sa30" species="s_id_sa30"'
+            ' compartmentAlias="ca6"',
+            '<celldesigner:speciesAlias id="sa30" species="s_id_sa30"'
+            ' compartmentAlias="ca5"',
+        )
+        input_file = tmp_path / "input.xml"
+        input_file.write_text(text)
+        map_ = momapy.io.core.read(str(input_file)).obj
+        species_layout = next(
+            layout_element
+            for layout_element in map_.layout.layout_elements
+            if layout_element.id_ == "sa30"
+        )
+        assert species_layout.container.id_ == "ca5"
+        output_file = tmp_path / "output.xml"
+        momapy.io.core.write(map_, str(output_file), writer="celldesigner")
+        root = lxml.etree.parse(str(output_file)).getroot()
+        sbml_namespace = root.nsmap[None]
+        species_alias = root.find(f".//{{{_CD_NS}}}speciesAlias[@id='sa30']")
+        species = root.find(f".//{{{sbml_namespace}}}species[@id='s_id_sa30']")
+        assert species_alias.get("compartmentAlias") == "ca5"
+        assert species.get("compartment") == "s_id_ca6"
+
+
+class TestGateModulationDrawnTwice:
+    """Each drawn copy of a gate modulation is written from its own key."""
+
+    def test_gate_modulation_drawn_twice(self, tmp_path):
+        with open(
+            os.path.join(_TEST_DIR, "fixtures", "boolean_logic_gates.xml")
+        ) as file:
+            text = file.read()
+        block = _get_reaction_block(text, "re2")
+        copied_block = block.replace('"re2"', '"re3"').replace(
+            "290.0,300.0", "290.0,400.0"
+        )
+        text = _replace_once(text, block, f"{block}\n{copied_block}")
+        input_file = tmp_path / "input.xml"
+        input_file.write_text(text)
+        map_ = momapy.io.core.read(str(input_file)).obj
+        output_file = tmp_path / "output.xml"
+        momapy.io.core.write(map_, str(output_file), writer="celldesigner")
+        written_map = momapy.io.core.read(str(output_file)).obj
+        assert written_map.model == map_.model
+        assert written_map.layout == map_.layout
+        root = lxml.etree.parse(str(output_file)).getroot()
+        sbml_namespace = root.nsmap[None]
+        for reaction_id, edit_points in [
+            ("re2", "290.0,300.0"),
+            ("re3", "290.0,400.0"),
+        ]:
+            reaction = root.find(
+                f".//{{{sbml_namespace}}}reaction[@id='{reaction_id}']"
+            )
+            gate_member = next(
+                gate_member
+                for gate_member in reaction.iter(f"{{{_CD_NS}}}GateMember")
+                if gate_member.get("type").startswith("BOOLEAN_LOGIC_GATE")
+            )
+            assert gate_member.get("editPoints") == edit_points

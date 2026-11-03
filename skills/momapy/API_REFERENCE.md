@@ -170,7 +170,6 @@ Purpose: reader-side helpers; shared base contexts. Wholly internal (`__all__ = 
 - `ReadingContext` — base context with `xml_root`, `map_key`, `model`, `layout`, `xml_id_to_model_element` (`IdentityMultiDict`), `xml_id_to_layout_element`, `xml_id_to_xml_element`, `element_to_annotations`, `element_to_notes`, `source_id_to_annotations`, `source_id_to_notes`, `with_annotations`, `with_notes`.
 - `WritingContext` — base context with `map_`, `element_to_annotations`, `element_to_notes`, `source_id_to_model_element`, `source_id_to_layout_element`, `source_id_to_annotations`, `source_id_to_notes`, `with_annotations`, `with_notes`, `element_to_xml_id`, `used_xml_ids`, `candidate_to_xml_id`.
 - `make_unique_xml_id(candidate, used_xml_ids) -> str`
-- `choose_compartment_layout(compartment_layouts, point) -> LayoutElement` — the drawing of a compartment a point belongs to (smallest box containing it, else nearest). Used by the CellDesigner and SBGN-ML writers for `compartmentAlias` / `compartmentRef`.
 - `get_xml_root_element(file_path) -> lxml.etree._Element | None` — root element of an XML file, parsing only its start (no entity resolution, no network); `None` if the file is unreadable or not XML. Used by the XML readers' `check_file` to detect a format from the root element.
 - `build_id_to_element(obj) -> frozendict` — context-free `id_to_element` walk over a `Map`/`Model`/`Layout` (every element `id_` -> element). Used by `build_id_mappings` and by the pickle reader (which has no reading context).
 - `build_id_mappings(reading_context, obj, real_model_source_ids=None, real_layout_source_ids=None) -> (frozendict, FrozenIdentityMultiDict|None, FrozenSurjectionDict|None)` — builds the `ReaderResult` id dicts. Dispatches `obj` internally: `Map` → uses its `.model`/`.layout`; `Model`/`Layout` → treated as the model/layout itself. `id_to_element` comes from `build_id_to_element`.
@@ -335,7 +334,7 @@ Purpose: SBGN-AF model classes.
 - Registered as `sbgnml-0.2` (`SBGNML0_2Reader`) and `sbgnml-0.3` / `sbgnml` (`SBGNML0_3Reader`).
 
 ### `src/momapy/sbgn/io/sbgnml/writer.py`
-- `SBGNML0_3Writer(Writer)` — the single SBGN-ML writer, registered as both `sbgnml-0.3` and `sbgnml`.
+- `SBGNML0_3Writer(Writer)` — the single SBGN-ML writer, registered as both `sbgnml-0.3` and `sbgnml`. Writes `compartmentRef` from the `container` of entity pool and activity glyphs; raises `NotImplementedError` when the model has equivalence operators.
 
 ### `src/momapy/sbgn/io/sbgnml/_reading_model.py` (`make_*` internal helpers)
 - `make_annotations_from_element(sbgnml_element)`, `make_notes_from_element(sbgnml_element)`, `make_and_add_annotations_and_notes(reading_context, sbgnml_element, model_element)`
@@ -374,7 +373,7 @@ Purpose: SBGN-AF model classes.
 - `get_glyph_key(sbgnml_glyph, map_key)`, `get_subglyph_key(sbgnml_subglyph, map_key)`, `get_arc_key(sbgnml_arc, map_key)`, `get_module(map_key)`, `get_module_from_object(obj)`.
 
 ### `src/momapy/sbgn/io/sbgnml/_writing.py` (serialization helpers, public-named)
-- `make_sbgnml_map(writing_context)`; the XML-id helpers `reserve_source_xml_ids`, `get_xml_id`; the builders `get_layout_elements`, `get_frozenset_keys`, `get_child_layout_element`, `make_sbgnml_glyph`, `make_sbgnml_stoichiometry_glyph`, `make_sbgnml_arc_element`, `make_sbgnml_child_glyphs`, `collect_model_elements`.
+- `make_sbgnml_map(writing_context)`; the XML-id helpers `reserve_source_xml_ids`, `get_xml_id`; the builders `get_arcs_from` (the arcs of the key of a process or operator glyph whose source is that glyph), `get_child_layout_element`, `make_sbgnml_glyph`, `make_sbgnml_stoichiometry_glyph`, `make_sbgnml_arc_element`, `make_sbgnml_child_glyphs`, `collect_model_elements`.
 - `NSMAP: dict` — SBGN/RDF/BioModels XML namespaces.
 - `make_lxml_element(tag, namespace=None, attributes=None, text=None, nsmap=None)`
 - `ensure_ncname(id_str) -> str` — coerces an id to XML NCName (`xs:ID`) syntax. (Replaces the removed `get_sbgnml_id`; XML-id assignment now lives in the `_writing.py` helpers `reserve_source_xml_ids`/`get_xml_id`.)
@@ -456,7 +455,7 @@ Functions (accept `CellDesignerMap | Builder`, return same):
 - `CellDesignerReadingContext(ReadingContext)` — adds `cd_complex_alias_id_to_cd_included_species_ids`, `cd_compartment_aliases`, `cd_compartments`, `cd_species_templates`, `cd_species_aliases`, `cd_reactions`, `cd_modulations`, `real_model_source_ids` / `real_layout_source_ids` (split ID tracking), `canvas_width`, `canvas_height`, `cd_degraded_alias_ids`, `cd_degraded_species_ids`.
 
 ### `src/momapy/celldesigner/io/celldesigner/reader.py`
-- `CellDesignerReader(Reader)` — `read(file_path, return_type="map", with_model=True, with_layout=True, with_annotations=True, with_notes=True, **options)`. Also `_make_empty_map`/`_make_empty_model`/`_make_empty_layout` and `_make_and_add_*` orchestration classmethods (mirroring SBGN-ML/SBML). Top-level elements are added with `add_top_level_model_element`, children with `add_child_model_element`, and each `(layout_element, model_element)` pair is appended to `layout_model_pairs`; at the end of reading, `merge_read_model_elements` merges equal elements, `check_equal_layout_elements` rejects equal top-level layout elements, and `make_layout_model_mapping` computes the mapping.
+- `CellDesignerReader(Reader)` — `read(file_path, return_type="map", with_model=True, with_layout=True, with_annotations=True, with_notes=True, **options)`. Also `_make_empty_map`/`_make_empty_model`/`_make_empty_layout` and `_make_and_add_*` orchestration classmethods (mirroring SBGN-ML/SBML). Top-level elements are added with `add_top_level_model_element`, children with `add_child_model_element`, and each `(layout_element, model_element)` pair is appended to `layout_model_pairs`; at the end of reading, `merge_read_model_elements` merges equal elements, `check_equal_layout_elements` rejects equal top-level layout elements, and `make_layout_model_mapping` computes the mapping. A species alias not in a complex alias gets as `container` the layout element of its `compartmentAlias`.
 
 ### `src/momapy/celldesigner/io/celldesigner/_reading_classification.py`
 - `KEY_TO_CLASS: dict[tuple[str, str], type | tuple[type | None, type]]` — 66 entries keyed by `(category, type)` (e.g. `("SPECIES", "GENERIC") -> (GenericProtein, GenericProteinLayout)`, `("TEMPLATE", "GENE") -> GeneTemplate`). Template/region keys map to a bare model class; species/reaction/modifier/gate keys map to a `(model, layout)` pair (model `None` for `DEGRADED`, whose layout is `DegradedLayout`). Mirrors the SBGN-ML reader's classification module.
@@ -510,6 +509,8 @@ Functions (accept `CellDesignerMap | Builder`, return same):
 - Geometry helpers: `are_collinear(p1, p2, p3, epsilon=1e-6) -> bool`, `is_degenerate_frame(origin, unit_x, unit_y, epsilon=1e-6) -> bool`, `make_non_degenerate_frame(origin, unit_x, unit_y, epsilon=1e-6, scale=1.0) -> (Point, Point, Point)`.
 - Encoding helpers: `color_to_cd_hex(color) -> str`, `encode_name(name) -> str`, `compute_cd_angle(...)`, `node_to_bounds_attrs(node) -> dict`.
 - `get_drawn_species(writing_context, alias_layout, species)` — the species drawn by an alias layout (a subunit when a reference to a complex is drawn to it), or `species` when `alias_layout` is None; used for the species attributes of the CellDesigner extension. `find_layout_for_species_in_frozenset(writing_context, species, frozenset_mapping)` returns the layout element of the key that draws `species`, or else one that draws a descendant of it.
+- `get_representative_layout_elements(writing_context, model_element) -> list` — the layout elements that draw a model element, in layout order (so the output does not depend on set order); `find_any_alias_layout(writing_context, species)` returns the first of them that is a `CellDesignerNode`. `compartmentAlias` is written from the `container` of the alias layout.
+- `make_celldesigner_gate_modulation_reaction(writing_context, modulation, frozenset_mapping)` — writes one drawing of a boolean gate modulation, with the modulation arc, gate layout and logic arcs of the key `frozenset_mapping`, and the inputs of `gate.inputs`.
 - `set_species_reference_stoichiometries(writing_context, list_of_species_references, participants)` — shares each participant's `stoichiometry` between the `speciesReference`s written for it (omitted when each share is 1).
 - Reverse mapping constants: `_ANCHOR_NAME_TO_LINK_ANCHOR_POSITION`, `_CHARACTER_TO_TEXT`, `_CLASS_TO_CD_STRING`, `_CLASS_TO_REACTION_TYPE`, `_CLASS_TO_MODIFIER_TYPE`, `_MODIFICATION_STATE_TO_CD` (the CD namespace is imported as `CD_NAMESPACE` from `_constants`; `NSMAP` uses it).
 

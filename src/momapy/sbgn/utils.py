@@ -127,12 +127,16 @@ def set_compartments_to_fit_content(
             compartment = activity.compartment
             if compartment is not None:
                 compartment_entities_mapping[compartment].append(activity)
+    layout_model_mapping = map_builder.layout_model_mapping
     for compartment in compartment_entities_mapping:
-        for compartment_layout in map_builder.get_mapping(compartment):
+        for (
+            compartment_layout
+        ) in layout_model_mapping.get_representative_layout_elements(compartment):
             elements = []
             for entity in compartment_entities_mapping[compartment]:
-                for entity_layout in map_builder.get_mapping(entity):
-                    elements.append(entity_layout)
+                elements += layout_model_mapping.get_representative_layout_elements(
+                    entity
+                )
             set_fit(compartment_layout, elements, xsep, ysep)
             if compartment_layout.label is not None:
                 compartment_layout.label.position = compartment_layout.south() - (
@@ -172,9 +176,12 @@ def set_complexes_to_fit_content(
         map_builder = builder_from_object(map_)
     else:
         map_builder = map_
+    layout_model_mapping = map_builder.layout_model_mapping
     for entity_pool in map_builder.model.entity_pools:
         if isinstance_or_builder(entity_pool, Complex):
-            for complex_layout in map_builder.get_mapping(entity_pool):
+            for (
+                complex_layout
+            ) in layout_model_mapping.get_representative_layout_elements(entity_pool):
                 elements = []
                 for subunit in entity_pool.subunits:
                     subunit_layouts = (
@@ -222,8 +229,11 @@ def set_submaps_to_fit_content(
         map_builder = builder_from_object(map_)
     else:
         map_builder = map_
+    layout_model_mapping = map_builder.layout_model_mapping
     for submap in map_builder.model.submaps:
-        for submap_layout in map_builder.get_mapping(submap):
+        for submap_layout in layout_model_mapping.get_representative_layout_elements(
+            submap
+        ):
             elements = []
             for terminal in submap.terminals:
                 terminal_layouts = (

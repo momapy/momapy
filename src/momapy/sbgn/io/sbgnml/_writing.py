@@ -8,7 +8,6 @@ import lxml.etree
 from momapy.core.layout import DoubleHeadedArc
 from momapy.core.layout import Node
 from momapy.core.layout import SingleHeadedArc
-from momapy.io._utils import choose_compartment_layout
 from momapy.io._utils import make_unique_xml_id
 from momapy.sbgn.pd import CardinalityLayout
 from momapy.sbgn.pd import ConsumptionLayout
@@ -293,59 +292,31 @@ def get_xml_id(writing_context: "WritingContext", element: typing.Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-def get_layout_elements(
+def get_arcs_from(
     writing_context: "WritingContext",
-    model_element: "ModelElement",
+    layout_element: "LayoutElement",
+    arc_classes: tuple[type, ...],
 ) -> "list[LayoutElement]":
-    """Get all layout elements for a model element.
-
-    Returns singleton layouts plus the representatives of any frozenset keys
-    mapped to the model element. Duplicates are removed while preserving
-    order.
+    """Get the arcs of the key of a layout element whose source is it.
 
     Args:
         writing_context: The current writing context.
-        model_element: The model element to look up.
+        layout_element: The layout element, a representative of its key.
+        arc_classes: The classes of the arcs to get.
 
     Returns:
-        A list of layout elements (may be empty).
+        The arcs of the key of `layout_element` that are instances of
+        `arc_classes` and whose source is `layout_element`; empty when
+        `layout_element` is a single key.
     """
-    mapping = writing_context.map_.layout_model_mapping
-    result = mapping.get_mapping(model_element)
-    if result is None or not isinstance(result, list):
-        return []
-    layout_elements = []
-    seen = set()
-    for item in result:
-        if isinstance(item, frozenset):
-            for representative in mapping.representative_to_key.inverse.get(item, []):
-                if representative not in seen:
-                    seen.add(representative)
-                    layout_elements.append(representative)
-        else:
-            if item not in seen:
-                seen.add(item)
-                layout_elements.append(item)
-    return layout_elements
-
-
-def get_frozenset_keys(
-    writing_context: "WritingContext",
-    model_element: "ModelElement",
-) -> list[frozenset]:
-    """Get all frozenset mapping keys for a process, modulation or operator.
-
-    Args:
-        writing_context: The current writing context.
-        model_element: The model element to look up.
-
-    Returns:
-        A list of frozenset keys (may be empty).
-    """
-    result = writing_context.map_.layout_model_mapping.get_mapping(model_element)
-    if result is None or not isinstance(result, list):
-        return []
-    return [item for item in result if isinstance(item, frozenset)]
+    key = writing_context.map_.layout_model_mapping.representative_to_key.get(
+        layout_element, ()
+    )
+    return [
+        member
+        for member in key
+        if isinstance(member, arc_classes) and member.source is layout_element
+    ]
 
 
 def get_child_layout_element(
@@ -405,23 +376,13 @@ def make_sbgnml_glyph(
     if orientation_or_direction is not None:
         sbgnml_orientation = DIRECTION_TO_SBGNML_ORIENTATION[orientation_or_direction]
         attributes["orientation"] = sbgnml_orientation
-    if model_element is not None and isinstance(
-        model_element,
-        (EntityPool, Activity),
+    if (
+        isinstance(model_element, (EntityPool, Activity))
+        and layout_element.container is not None
     ):
-        compartment = model_element.compartment
-        if compartment is not None:
-            compartment_layout_elements = get_layout_elements(
-                writing_context, compartment
-            )
-            if compartment_layout_elements:
-                compartment_id = get_xml_id(
-                    writing_context,
-                    choose_compartment_layout(
-                        compartment_layout_elements, layout_element.center()
-                    ),
-                )
-                attributes["compartmentRef"] = compartment_id
+        attributes["compartmentRef"] = get_xml_id(
+            writing_context, layout_element.container
+        )
     sbgnml_glyph = make_lxml_element("glyph", attributes=attributes)
     entity_name = CLASS_TO_SBGNML_ENTITY_NAME.get(type(layout_element))
     if entity_name is not None:
@@ -574,12 +535,14 @@ def collect_model_elements(
     model = writing_context.map_.model
     is_pd = isinstance(model, SBGNPDModel)
 
+    mapping = writing_context.map_.layout_model_mapping
+
     def _register(layout_el: "LayoutElement", sbgnml_el: lxml.etree._Element) -> None:
         layout_to_xml.setdefault(layout_el, []).append(sbgnml_el)
 
     # 1. Compartments
     for compartment in model.compartments:
-        for layout_el in get_layout_elements(writing_context, compartment):
+        for layout_el in mapping.get_representative_layout_elements(compartment):
             sbgnml_glyph = make_sbgnml_glyph(
                 writing_context, layout_el, model_element=compartment
             )
@@ -593,7 +556,7 @@ def collect_model_elements(
     # 2. Entity pools (PD) or Activities (AF)
     if is_pd:
         for entity_pool in model.entity_pools:
-            for layout_el in get_layout_elements(writing_context, entity_pool):
+            for layout_el in mapping.get_representative_layout_elements(entity_pool):
                 sbgnml_glyph = make_sbgnml_glyph(
                     writing_context, layout_el, model_element=entity_pool
                 )
@@ -613,8 +576,8 @@ def collect_model_elements(
                 continue
             if not (process.has_external_source or process.has_external_sink):
                 continue
-            for frozenset_key in get_frozenset_keys(writing_context, process):
-                for item in frozenset_key:
+            for process_layout in mapping.get_representative_layout_elements(process):
+                for item in mapping.representative_to_key.get(process_layout, ()):
                     if isinstance(item, EmptySetLayout):
                         if item in seen_empty_set_layouts:
                             continue
@@ -625,7 +588,7 @@ def collect_model_elements(
                         _register(item, sbgnml_glyph)
     else:
         for activity in model.activities:
-            for layout_el in get_layout_elements(writing_context, activity):
+            for layout_el in mapping.get_representative_layout_elements(activity):
                 sbgnml_glyph = make_sbgnml_glyph(
                     writing_context, layout_el, model_element=activity
                 )
@@ -637,29 +600,10 @@ def collect_model_elements(
                 _register(layout_el, sbgnml_glyph)
 
     # 3. Logical operators (with logic arcs)
-    representative_to_key = (
-        writing_context.map_.layout_model_mapping.representative_to_key
-    )
     for logical_operator in model.logical_operators:
-        for frozenset_key in get_frozenset_keys(writing_context, logical_operator):
-            operator_layout = None
-            arc_layouts = []
-            for item in frozenset_key:
-                if isinstance(
-                    item,
-                    (
-                        PDLogicArcLayout,
-                        AFLogicArcLayout,
-                    ),
-                ):
-                    arc_layouts.append(item)
-                elif (
-                    isinstance(item, Node)
-                    and representative_to_key.get(item) == frozenset_key
-                ):
-                    operator_layout = item
-            if operator_layout is None:
-                continue
+        for operator_layout in mapping.get_representative_layout_elements(
+            logical_operator
+        ):
             sbgnml_glyph = make_sbgnml_glyph(
                 writing_context,
                 operator_layout,
@@ -667,13 +611,17 @@ def collect_model_elements(
             )
             add_annotations_and_notes(writing_context, sbgnml_glyph, logical_operator)
             _register(operator_layout, sbgnml_glyph)
-            for arc_layout in arc_layouts:
+            for arc_layout in get_arcs_from(
+                writing_context,
+                operator_layout,
+                (PDLogicArcLayout, AFLogicArcLayout),
+            ):
                 sbgnml_arc = make_sbgnml_arc_element(writing_context, arc_layout)
                 _register(arc_layout, sbgnml_arc)
 
     # 4. Submaps (with terminals and equivalence arcs)
     for submap in model.submaps:
-        for layout_el in get_layout_elements(writing_context, submap):
+        for layout_el in mapping.get_representative_layout_elements(submap):
             sbgnml_glyph = make_sbgnml_glyph(
                 writing_context, layout_el, model_element=submap
             )
@@ -706,7 +654,7 @@ def collect_model_elements(
 
     # 5. Tags (with equivalence arcs)
     for tag in model.tags:
-        for layout_el in get_layout_elements(writing_context, tag):
+        for layout_el in mapping.get_representative_layout_elements(tag):
             sbgnml_glyph = make_sbgnml_glyph(
                 writing_context, layout_el, model_element=tag
             )
@@ -734,7 +682,7 @@ def collect_model_elements(
     if is_pd:
         for process in model.processes:
             if isinstance(process, Phenotype):
-                for layout_el in get_layout_elements(writing_context, process):
+                for layout_el in mapping.get_representative_layout_elements(process):
                     sbgnml_glyph = make_sbgnml_glyph(
                         writing_context, layout_el, model_element=process
                     )
@@ -745,25 +693,9 @@ def collect_model_elements(
                     add_annotations_and_notes(writing_context, sbgnml_glyph, process)
                     _register(layout_el, sbgnml_glyph)
             elif isinstance(process, StoichiometricProcess):
-                for frozenset_key in get_frozenset_keys(writing_context, process):
-                    process_layout = None
-                    arc_layouts = []
-                    for item in frozenset_key:
-                        if isinstance(
-                            item,
-                            (
-                                ConsumptionLayout,
-                                ProductionLayout,
-                            ),
-                        ):
-                            arc_layouts.append(item)
-                        elif (
-                            isinstance(item, Node)
-                            and representative_to_key.get(item) == frozenset_key
-                        ):
-                            process_layout = item
-                    if process_layout is None:
-                        continue
+                for process_layout in mapping.get_representative_layout_elements(
+                    process
+                ):
                     sbgnml_glyph = make_sbgnml_glyph(
                         writing_context,
                         process_layout,
@@ -775,7 +707,11 @@ def collect_model_elements(
                         sbgnml_glyph.append(child_glyph)
                     add_annotations_and_notes(writing_context, sbgnml_glyph, process)
                     _register(process_layout, sbgnml_glyph)
-                    for arc_layout in arc_layouts:
+                    for arc_layout in get_arcs_from(
+                        writing_context,
+                        process_layout,
+                        (ConsumptionLayout, ProductionLayout),
+                    ):
                         sbgnml_arc = make_sbgnml_arc_element(
                             writing_context, arc_layout
                         )
@@ -784,14 +720,7 @@ def collect_model_elements(
     # 7. Modulations (PD) or Influences (AF)
     modulations = model.modulations if is_pd else model.influences
     for modulation in modulations:
-        for frozenset_key in get_frozenset_keys(writing_context, modulation):
-            arc_layout = None
-            for item in frozenset_key:
-                if representative_to_key.get(item) == frozenset_key:
-                    arc_layout = item
-                    break
-            if arc_layout is None:
-                continue
+        for arc_layout in mapping.get_representative_layout_elements(modulation):
             sbgnml_arc = make_sbgnml_arc_element(writing_context, arc_layout)
             add_annotations_and_notes(writing_context, sbgnml_arc, modulation)
             _register(arc_layout, sbgnml_arc)
