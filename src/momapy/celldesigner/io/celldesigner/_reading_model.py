@@ -361,14 +361,12 @@ def make_species_modification(
 def make_species_structural_state(
     reading_context: "CellDesignerReadingContext",
     cd_species_structural_state: typing.Any,
-    order: int | None = None,
 ) -> typing.Any:
     """Create a species structural state model builder.
 
     Args:
         reading_context: The reading context.
         cd_species_structural_state: The CellDesigner structural state XML element.
-        order: Optional ordering for structural states with no value.
 
     Returns:
         A structural state model builder, or ``None`` if no model is being built.
@@ -377,7 +375,6 @@ def make_species_structural_state(
         return None
     model_element = new_builder_object(StructuralState)
     model_element.value = cd_species_structural_state.get("structuralState")
-    model_element.order = order
     return model_element
 
 

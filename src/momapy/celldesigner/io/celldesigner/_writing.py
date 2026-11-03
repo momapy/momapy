@@ -2243,27 +2243,26 @@ def make_celldesigner_species_state(
 ) -> lxml.etree._Element | None:
     has_mods = hasattr(species, "modifications") and species.modifications
     has_homo = hasattr(species, "homomultimer") and species.homomultimer > 1
-    has_struct = hasattr(species, "structural_states") and species.structural_states
-    if not has_mods and not has_homo and not has_struct:
+    structural_state = getattr(species, "structural_state", None)
+    if not has_mods and not has_homo and structural_state is None:
         return None
     state = make_celldesigner_element("state")
     if has_homo:
         state.append(
             make_celldesigner_element("homodimer", text=str(species.homomultimer))
         )
-    if has_struct:
+    if structural_state is not None:
         ss_list = make_celldesigner_element("listOfStructuralStates")
-        for ss in species.structural_states:
-            if ss.value is None:
-                ss_list.append(make_celldesigner_element("structuralState"))
-            else:
-                ss_list.append(
-                    make_celldesigner_element(
-                        "structuralState",
-                        attributes={"structuralState": ss.value},
-                        text=ss.value,
-                    )
+        if structural_state.value is None:
+            ss_list.append(make_celldesigner_element("structuralState"))
+        else:
+            ss_list.append(
+                make_celldesigner_element(
+                    "structuralState",
+                    attributes={"structuralState": structural_state.value},
+                    text=structural_state.value,
                 )
+            )
         state.append(ss_list)
     if has_mods:
         mod_list = make_celldesigner_element("listOfModifications")

@@ -14,12 +14,10 @@ TWO_STATES_FIXTURE = os.path.join(
 )
 
 
-def check_structural_states(map_):
+def check_structural_state(map_):
     species = next(iter(map_.model.species))
-    assert {
-        (structural_state.value, structural_state.order)
-        for structural_state in species.structural_states
-    } == {(None, 1)}
+    assert species.structural_state is not None
+    assert species.structural_state.value is None
     species_layout = map_.layout.layout_elements[0]
     structural_state_layouts = [
         layout_element
@@ -35,21 +33,21 @@ def check_structural_states(map_):
 
 def test_read():
     map_ = momapy.io.core.read(FIXTURE).obj
-    check_structural_states(map_)
+    check_structural_state(map_)
     structural_state_layout_ids = {
         layout_element.id_
         for layout_element in map_.layout.layout_elements[0].layout_elements
     }
-    assert structural_state_layout_ids == {"sa1_structural_state_1_layout"}
+    assert structural_state_layout_ids == {"sa1_structural_state_layout"}
 
 
 def test_round_trip(tmp_path):
     map_ = momapy.io.core.read(FIXTURE).obj
     output_file = tmp_path / "output.xml"
     momapy.io.core.write(map_, str(output_file), writer="celldesigner")
-    check_structural_states(momapy.io.core.read(str(output_file)).obj)
+    check_structural_state(momapy.io.core.read(str(output_file)).obj)
 
 
-def test_two_structural_states_drawn_once_raise():
-    with pytest.raises(ValueError):
+def test_two_structural_states_raise():
+    with pytest.raises(ValueError, match="several structural states"):
         momapy.io.core.read(TWO_STATES_FIXTURE)

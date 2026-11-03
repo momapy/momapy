@@ -360,18 +360,23 @@ def get_species_modifications(
     return list(getattr(cd_list_of_modifications, "modification", []))
 
 
-def get_species_structural_states(
+def get_species_structural_state(
     cd_species: lxml.objectify.ObjectifiedElement,
 ) -> typing.Any:
     cd_species_state = get_state(cd_species)
     if cd_species_state is None:
-        return []
+        return None
     cd_list_of_structural_states = getattr(
         cd_species_state, "listOfStructuralStates", None
     )
     if cd_list_of_structural_states is None:
-        return []
-    return cd_list_of_structural_states.structuralState
+        return None
+    cd_structural_states = list(cd_list_of_structural_states.structuralState)
+    if len(cd_structural_states) > 1:
+        raise ValueError(
+            f"species '{cd_species.get('id')}' has several structural states"
+        )
+    return cd_structural_states[0]
 
 
 def get_template_from_species(

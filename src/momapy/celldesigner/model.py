@@ -209,12 +209,6 @@ class StructuralState(CellDesignerModelElement):
         default=None,
         metadata={"description": "The value of the structural state"},
     )
-    order: int | None = dataclasses.field(
-        default=None,
-        metadata={
-            "description": "The order of the structural state. This is used to distinguish between two or more structural states with no value (i.e., set to `None`)"
-        },
-    )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -253,9 +247,9 @@ class Protein(Species):
         default_factory=frozenset,
         metadata={"description": "The modifications of the protein"},
     )
-    structural_states: frozenset[StructuralState] = dataclasses.field(
-        default_factory=frozenset,
-        metadata={"description": "The structural states of the protein"},
+    structural_state: StructuralState | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The structural state of the protein"},
     )
 
 
@@ -373,9 +367,9 @@ class Unknown(Species):
 class Complex(Species):
     """Complex."""
 
-    structural_states: frozenset[StructuralState] = dataclasses.field(
-        default_factory=frozenset,
-        metadata={"description": "The structural states of the complex"},
+    structural_state: StructuralState | None = dataclasses.field(
+        default=None,
+        metadata={"description": "The structural state of the complex"},
     )
     subunits: frozenset[Species] = dataclasses.field(
         default_factory=frozenset,

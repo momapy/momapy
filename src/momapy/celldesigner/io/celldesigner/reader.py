@@ -42,8 +42,8 @@ Element-specific patterns:
   ``f"{speciesAlias/@id}_{structuralState/@structuralState}_layout"``.
   Keyed on the alias for the same reason as Modification.
   Spaces in the value are replaced with ``_``.
-  When the value is missing, ``structural_state_{order}`` is used in place
-  of the value in both ids.
+  When the value is missing, ``structural_state`` is used in place of the
+  value in both ids.
 - **Reactant / Product**: model ``id_`` = ``speciesReference/@metaid`` of
   the first entry of the group of entries of one reaction side referring to
   the same species (or ``f"{reaction/@id}_{speciesReference/@species}"``
@@ -130,7 +130,7 @@ from momapy.celldesigner.io.celldesigner._reading_parsing import (
     get_species,
     get_species_aliases,
     get_species_modifications,
-    get_species_structural_states,
+    get_species_structural_state,
     get_species_templates,
     get_template_from_species_alias,
     get_width,
@@ -813,22 +813,14 @@ class CellDesignerReader(Reader):
                         super_model_element=model_element,
                         super_layout_element=layout_element,
                     )
-            number_of_structural_states_without_value = 0
-            for cd_species_structural_state in get_species_structural_states(
-                cd_species
-            ):
-                if cd_species_structural_state.get("structuralState") is None:
-                    number_of_structural_states_without_value += 1
-                    order = number_of_structural_states_without_value
-                else:
-                    order = None
+            cd_species_structural_state = get_species_structural_state(cd_species)
+            if cd_species_structural_state is not None:
                 cls._make_and_add_species_structural_state(
                     reading_context,
                     cd_species_structural_state=cd_species_structural_state,
                     super_cd_element=cd_species_alias,
                     super_model_element=model_element,
                     super_layout_element=layout_element,
-                    order=order,
                 )
             cd_subunits = [
                 reading_context.xml_id_to_xml_element[cd_subunit_id]
@@ -974,24 +966,21 @@ class CellDesignerReader(Reader):
         super_cd_element: lxml.objectify.ObjectifiedElement,
         super_model_element: typing.Any,
         super_layout_element: typing.Any,
-        order: int | None = None,
     ) -> tuple[typing.Any, typing.Any]:
         cd_species_id = super_cd_element.get("species")
         cd_structural_state_value = cd_species_structural_state.get("structuralState")
         if cd_structural_state_value is None:
-            id_part = f"structural_state_{order}"
+            id_part = "structural_state"
         else:
             id_part = cd_structural_state_value.replace(" ", "_")
         cd_structural_state_id = f"{cd_species_id}_{id_part}"
         if reading_context.model is not None:
             model_element = _reading_model.make_species_structural_state(
-                reading_context, cd_species_structural_state, order=order
+                reading_context, cd_species_structural_state
             )
             model_element.id_ = cd_structural_state_id
             model_element = object_from_builder(model_element)
-            model_element = add_child_model_element(
-                reading_context, model_element, super_model_element.structural_states
-            )
+            super_model_element.structural_state = model_element
         else:
             model_element = None
         if reading_context.layout is not None:
