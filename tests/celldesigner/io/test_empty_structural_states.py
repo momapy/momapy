@@ -2,11 +2,16 @@
 
 import os
 
+import pytest
+
 import momapy.io.core
 from momapy.celldesigner.layout import StructuralStateLayout
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 FIXTURE = os.path.join(TEST_DIR, "..", "fixtures", "empty_structural_states.xml")
+TWO_STATES_FIXTURE = os.path.join(
+    TEST_DIR, "..", "fixtures", "two_empty_structural_states.xml"
+)
 
 
 def check_structural_states(map_):
@@ -14,14 +19,14 @@ def check_structural_states(map_):
     assert {
         (structural_state.value, structural_state.order)
         for structural_state in species.structural_states
-    } == {(None, 1), (None, 2)}
+    } == {(None, 1)}
     species_layout = map_.layout.layout_elements[0]
     structural_state_layouts = [
         layout_element
         for layout_element in species_layout.layout_elements
         if isinstance(layout_element, StructuralStateLayout)
     ]
-    assert len(structural_state_layouts) == 2
+    assert len(structural_state_layouts) == 1
     assert all(
         structural_state_layout.label is None
         for structural_state_layout in structural_state_layouts
@@ -35,10 +40,7 @@ def test_read():
         layout_element.id_
         for layout_element in map_.layout.layout_elements[0].layout_elements
     }
-    assert structural_state_layout_ids == {
-        "sa1_structural_state_1_layout",
-        "sa1_structural_state_2_layout",
-    }
+    assert structural_state_layout_ids == {"sa1_structural_state_1_layout"}
 
 
 def test_round_trip(tmp_path):
@@ -46,3 +48,8 @@ def test_round_trip(tmp_path):
     output_file = tmp_path / "output.xml"
     momapy.io.core.write(map_, str(output_file), writer="celldesigner")
     check_structural_states(momapy.io.core.read(str(output_file)).obj)
+
+
+def test_two_structural_states_drawn_once_raise():
+    with pytest.raises(ValueError):
+        momapy.io.core.read(TWO_STATES_FIXTURE)

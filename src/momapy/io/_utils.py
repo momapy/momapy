@@ -1,7 +1,7 @@
 """Internal utilities for map readers.
 
-These functions handle model element deduplication and stale reference
-remapping during the read process.  They are not part of the public API.
+These functions record the elements read, merge equal elements at the end
+of reading, and build the id mappings.  They are not part of the public API.
 """
 
 import collections
@@ -28,12 +28,10 @@ from momapy.geometry import Point
 from momapy.utils import FrozenIdentityMultiDict
 from momapy.utils import FrozenSurjectionDict
 from momapy.utils import IdentityMultiDict
-from momapy.utils import IdentitySurjectionDict
-from momapy.utils import add_or_replace_element_in_set
 from momapy.utils import get_element_from_collection
 
 
-# Everything here (context dataclasses, ID-remapping helpers) is internal and
+# Everything here (context dataclasses, reading helpers) is internal and
 # may change without a deprecation cycle; nothing is part of the public API.
 __all__ = []
 
@@ -170,9 +168,9 @@ def make_unique_xml_id(candidate: str, used_xml_ids: set) -> str:
 class ReadingContext:
     """Base reading context shared by all format-specific readers.
 
-    Holds the mappings and caches needed for model element registration,
-    deduplication, and layout-model wiring.  Format-specific readers
-    subclass this and add their own fields.
+    Holds the XML id tables, the model elements and pairs read, and the
+    annotations and notes.  Format-specific readers subclass this and add
+    their own fields.
     """
 
     xml_root: typing.Any = dataclasses.field(
@@ -213,10 +211,6 @@ class ReadingContext:
     """Per-source-id notes, keyed by the raw XML id of the source
     element.  Parallel to ``element_to_notes``; see
     ``source_id_to_annotations``."""
-    layout_model_mapping: typing.Any = dataclasses.field(
-        default=None,
-        metadata={"description": "The layout-model mapping being built, or None."},
-    )
     with_annotations: bool = dataclasses.field(
         default=True,
         metadata={"description": "Whether to read annotations."},
@@ -225,18 +219,6 @@ class ReadingContext:
         default=True,
         metadata={"description": "Whether to read notes."},
     )
-    model_element_cache: dict[ModelElement, ModelElement] = dataclasses.field(
-        default_factory=dict
-    )
-    model_element_remap: IdentitySurjectionDict = dataclasses.field(
-        default_factory=IdentitySurjectionDict
-    )
-    """Maps id(evicted_object) -> surviving_object.  Uses
-    IdentitySurjectionDict so chaining (finding all entries whose
-    surviving element was itself evicted) is O(k) via inverse lookup."""
-    evicted_elements: dict[int, ModelElement] = dataclasses.field(default_factory=dict)
-    """Maps id(evicted_object) -> evicted_object.  Keeps evicted objects
-    alive to prevent Python from reusing their memory address."""
     layout_model_pairs: list[tuple[LayoutElement, ModelElement]] = dataclasses.field(
         default_factory=list
     )
@@ -416,164 +398,6 @@ def build_id_mappings(
         source_id_to_model_element,
         source_id_to_layout_element,
     )
-
-
-def remap_model_element(
-    reading_context: ReadingContext,
-    evicted_element: ModelElement,
-    surviving_element: ModelElement,
-) -> None:
-    """Remap an evicted element and its children to the surviving ones.
-
-    Scans reading_context.xml_id_to_model_element for entries pointing
-    to the evicted element (by identity) and updates them.  Recurses
-    into frozenset fields to remap children.  Accumulates remap in
-    reading_context.model_element_remap for the final
-    layout_model_mapping pass.
-
-    Args:
-        reading_context: The reading context holding all shared state.
-        evicted_element: The element that lost deduplication.
-        surviving_element: The element that won deduplication.
-    """
-    # Fix stale entries in xml_id_to_model_element via identity inverse.
-    reading_context.xml_id_to_model_element.replace_value(
-        evicted_element, surviving_element
-    )
-    # Chain: if earlier A→B and now B→C, update A→C.
-    # Uses the remap's identity inverse to find all entries whose
-    # surviving element is the current evicted element.
-    for evicted_id in list(
-        reading_context.model_element_remap.inverse.get(id(evicted_element), ())
-    ):
-        reading_context.model_element_remap[evicted_id] = surviving_element
-    # Record this eviction.
-    reading_context.model_element_remap[id(evicted_element)] = surviving_element
-    reading_context.evicted_elements[id(evicted_element)] = evicted_element
-    # Recurse into children stored in collection fields.
-    if not dataclasses.is_dataclass(surviving_element):
-        return
-    for field in dataclasses.fields(type(surviving_element)):
-        surviving_value = getattr(surviving_element, field.name)
-        evicted_value = getattr(evicted_element, field.name)
-        if isinstance(surviving_value, (frozenset, tuple)):
-            for evicted_child in evicted_value:
-                for surviving_child in surviving_value:
-                    if (
-                        evicted_child == surviving_child
-                        and evicted_child is not surviving_child
-                    ):
-                        remap_model_element(
-                            reading_context,
-                            evicted_child,
-                            surviving_child,
-                        )
-                        break
-        elif isinstance(surviving_value, frozendict.frozendict):
-            for evicted_child in evicted_value.values():
-                for surviving_child in surviving_value.values():
-                    if (
-                        evicted_child == surviving_child
-                        and evicted_child is not surviving_child
-                    ):
-                        remap_model_element(
-                            reading_context,
-                            evicted_child,
-                            surviving_child,
-                        )
-                        break
-
-
-def resolve_remap(
-    element: ModelElement,
-    reading_context: ReadingContext,
-) -> ModelElement:
-    """Return the surviving element if element was evicted, else element.
-
-    Uses the evicted_elements dict to verify identity (prevents false
-    matches from id() address reuse after garbage collection).
-
-    Args:
-        element: The element to resolve.
-        reading_context: The reading context holding the remap.
-
-    Returns:
-        The surviving element if element was evicted, else element.
-    """
-    evicted_object = reading_context.evicted_elements.get(id(element))
-    if evicted_object is not None and element is evicted_object:
-        return reading_context.model_element_remap[id(element)]
-    return element
-
-
-def apply_remap_to_layout_model_mapping(
-    reading_context: ReadingContext,
-) -> None:
-    """Update layout_model_mapping values that point to evicted elements.
-
-    Args:
-        reading_context: The reading context holding the remap and
-            layout_model_mapping.
-    """
-    layout_model_mapping = reading_context.layout_model_mapping
-    for layout_element in list(layout_model_mapping):
-        model_element_key = layout_model_mapping[layout_element]
-        if isinstance(model_element_key, tuple):
-            new_model_element_key = tuple(
-                resolve_remap(model_element, reading_context)
-                for model_element in model_element_key
-            )
-            if any(
-                new_model_element is not old_model_element
-                for new_model_element, old_model_element in zip(
-                    new_model_element_key, model_element_key
-                )
-            ):
-                layout_model_mapping[layout_element] = new_model_element_key
-        else:
-            new_model_element_key = resolve_remap(model_element_key, reading_context)
-            if new_model_element_key is not model_element_key:
-                layout_model_mapping[layout_element] = new_model_element_key
-
-
-def register_model_element(
-    reading_context: ReadingContext,
-    model_element: ModelElement,
-    collection: set,
-    id_: str,
-) -> ModelElement:
-    """Register a model element with incremental deduplication.
-
-    If an equal element already exists in the collection, keeps the
-    one with the smallest id_ and remaps stale references.
-    Accumulates a remap for the final layout_model_mapping pass.
-
-    Args:
-        reading_context: The reading context holding all shared state.
-        model_element: The element to register.
-        collection: The model collection (e.g., model.species).
-        id_: The XML id to register the element under.
-
-    Returns:
-        The surviving element (either the new one or the previously
-        registered one, whichever has the smallest id_).
-    """
-    existing_element = reading_context.model_element_cache.get(model_element)
-    surviving_element = add_or_replace_element_in_set(
-        model_element,
-        collection,
-        func=lambda new, old: new.id_ < old.id_,
-        cache=reading_context.model_element_cache,
-    )
-    reading_context.xml_id_to_model_element.add(id_, surviving_element)
-    if existing_element is not None:
-        evicted_element = (
-            model_element
-            if model_element is not surviving_element
-            else existing_element
-        )
-        remap_model_element(reading_context, evicted_element, surviving_element)
-    return surviving_element
 
 
 def add_top_level_model_element(

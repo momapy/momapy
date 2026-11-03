@@ -14,12 +14,12 @@ _CD_NS = "http://www.sbml.org/2001/ns/celldesigner"
 _SBML_NS = "http://www.sbml.org/sbml/level2/version4"
 
 
-def check_modifier_drawn_twice(map_, first_metaid="MSR1"):
+def check_modifier_drawn_twice(map_):
     reaction = next(iter(map_.model.reactions))
     assert len(reaction.modifiers) == 1
     modifier = next(iter(reaction.modifiers))
     assert isinstance(modifier, Trigger)
-    assert modifier.id_ == first_metaid
+    assert modifier.id_ == "MSR1"
     arcs = map_.layout_model_mapping.get_child_layout_elements(modifier, reaction)
     assert {arc.id_ for arc in arcs} == {"MSR1_layout", "MSR2_layout"}
     assert {arc.source.id_ for arc in arcs} == {"sa3", "sa4"}
@@ -66,7 +66,7 @@ def test_round_trip(tmp_path):
     check_modifier_drawn_twice(momapy.io.core.read(str(output_file)).obj)
 
 
-def test_smaller_metaid_read_second(tmp_path):
+def test_smaller_metaid_kept(tmp_path):
     with open(FIXTURE) as file:
         text = file.read()
     text = text.replace('metaid="MSR1"', 'metaid="MSR_SWAP"')
@@ -74,6 +74,4 @@ def test_smaller_metaid_read_second(tmp_path):
     text = text.replace('metaid="MSR_SWAP"', 'metaid="MSR2"')
     swapped_file = tmp_path / "swapped.xml"
     swapped_file.write_text(text)
-    check_modifier_drawn_twice(
-        momapy.io.core.read(str(swapped_file)).obj, first_metaid="MSR2"
-    )
+    check_modifier_drawn_twice(momapy.io.core.read(str(swapped_file)).obj)

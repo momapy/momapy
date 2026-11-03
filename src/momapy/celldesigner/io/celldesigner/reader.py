@@ -69,6 +69,7 @@ Element-specific patterns:
 
 import os
 import collections
+import dataclasses
 import typing
 import warnings
 
@@ -76,20 +77,21 @@ import frozendict
 import lxml.etree
 import lxml.objectify
 
-from momapy.core.mapping import LayoutModelMappingBuilder
+from momapy.core._assembling import check_equal_layout_elements
+from momapy.core._assembling import make_layout_model_mapping
 from momapy.io.core import Reader, ReaderResult
 from momapy.io._utils import (
-    apply_remap_to_layout_model_mapping,
+    add_child_model_element,
+    add_top_level_model_element,
     build_id_mappings,
     get_xml_root_element,
-    register_model_element,
+    merge_read_model_elements,
 )
 from momapy.builder import new_builder_object
 from momapy.builder import object_from_builder
 from momapy.celldesigner.map import CellDesignerMap
 from momapy.utils import (
     IdentityMultiDict,
-    add_or_replace_element_in_set,
     check_file_exists,
 )
 
@@ -374,13 +376,8 @@ class CellDesignerReader(Reader):
         element_to_notes = collections.defaultdict(set)
         source_id_to_annotations = collections.defaultdict(set)
         source_id_to_notes = collections.defaultdict(set)
-        # Bound even when neither a model nor a layout is requested (both flags
-        # False), so the map branch below yields an all-None map instead of
-        # crashing with UnboundLocalError.
         layout_model_mapping = None
         if model is not None or layout is not None:
-            if model is not None and layout is not None:
-                layout_model_mapping = LayoutModelMappingBuilder()
             reading_context = CellDesignerReadingContext(
                 xml_root=cd_model,
                 model=model,
@@ -390,7 +387,6 @@ class CellDesignerReader(Reader):
                 element_to_notes=element_to_notes,
                 source_id_to_annotations=source_id_to_annotations,
                 source_id_to_notes=source_id_to_notes,
-                layout_model_mapping=layout_model_mapping,
                 with_annotations=with_annotations,
                 with_notes=with_notes,
             )
@@ -429,14 +425,15 @@ class CellDesignerReader(Reader):
                     reading_context,
                     cd_reaction=cd_modulation,
                 )
-            # Fix stale references in layout_model_mapping from
-            # local variables captured before dedup events.
-            if (
-                reading_context.model_element_remap
-                and reading_context.layout_model_mapping is not None
-            ):
-                apply_remap_to_layout_model_mapping(reading_context)
+            if model is not None:
+                merge_read_model_elements(reading_context)
             if layout is not None:
+                check_equal_layout_elements(layout.layout_elements)
+                if model is not None:
+                    layout_model_mapping = make_layout_model_mapping(
+                        layout.layout_elements,
+                        reading_context.layout_model_pairs,
+                    )
                 _reading_layout.set_layout_size_and_position(reading_context, cd_model)
         cd_model_id = cd_model.get("id")
         if cd_model_id is not None:
@@ -458,8 +455,9 @@ class CellDesignerReader(Reader):
             map_ = cls._make_empty_map(cd_model)
             map_.model = model
             map_.layout = layout
-            map_.layout_model_mapping = layout_model_mapping
-            obj = object_from_builder(map_)
+            obj = dataclasses.replace(
+                object_from_builder(map_), layout_model_mapping=layout_model_mapping
+            )
             if with_annotations:
                 annotations = _reading_model.make_annotations_from_element(cd_model)
                 element_to_annotations[obj].update(annotations)
@@ -543,8 +541,8 @@ class CellDesignerReader(Reader):
             else:
                 layout_element = None
             if reading_context.model is not None and reading_context.layout is not None:
-                reading_context.layout_model_mapping.add_mapping(
-                    layout_element, model_element
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
                 )
         return model_element, layout_element
 
@@ -578,11 +576,8 @@ class CellDesignerReader(Reader):
                     )
                 model_element.outside = outside_model_element
             model_element = object_from_builder(model_element)
-            model_element = register_model_element(
-                reading_context,
-                model_element,
-                reading_context.model.compartments,
-                cd_compartment.get("id"),
+            model_element = add_top_level_model_element(
+                reading_context, model_element, cd_compartment.get("id")
             )
             _reading_model.make_and_add_annotations(
                 reading_context,
@@ -652,11 +647,8 @@ class CellDesignerReader(Reader):
                     order=order,
                 )
             model_element = object_from_builder(model_element)
-            model_element = register_model_element(
-                reading_context,
-                model_element,
-                reading_context.model.species_templates,
-                cd_species_template.get("id"),
+            model_element = add_top_level_model_element(
+                reading_context, model_element, cd_species_template.get("id")
             )
         else:
             model_element = None
@@ -678,7 +670,11 @@ class CellDesignerReader(Reader):
             )
             cd_modification_residue_id = model_element.id_
             model_element = object_from_builder(model_element)
-            super_model_element.modification_residues.add(model_element)
+            model_element = add_child_model_element(
+                reading_context,
+                model_element,
+                super_model_element.modification_residues,
+            )
             # we use the model element's id (a composite of the parent and
             # child cd ids) rather than the cd element's own id
             reading_context.xml_id_to_model_element.add(
@@ -709,7 +705,9 @@ class CellDesignerReader(Reader):
                 order,
             )
             model_element = object_from_builder(model_element)
-            super_model_element.regions.add(model_element)
+            model_element = add_child_model_element(
+                reading_context, model_element, super_model_element.regions
+            )
             # we use the model element's id (a composite of the parent and
             # child cd ids) rather than the cd element's own id
             reading_context.xml_id_to_model_element.add(
@@ -781,26 +779,16 @@ class CellDesignerReader(Reader):
                 )
             else:
                 layout_element = None
-            auxiliary_map_elements = []
             covered_cd_residue_ids = set()
             for cd_species_modification in get_species_modifications(cd_species):
                 covered_cd_residue_ids.add(cd_species_modification.get("residue"))
-                modification_model_element, modification_layout_element = (
-                    cls._make_and_add_species_modification(
-                        reading_context,
-                        cd_species_modification=cd_species_modification,
-                        super_cd_element=cd_species_alias,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_species_modification(
+                    reading_context,
+                    cd_species_modification=cd_species_modification,
+                    super_cd_element=cd_species_alias,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if (
-                    modification_model_element is not None
-                    and modification_layout_element is not None
-                ):
-                    auxiliary_map_elements.append(
-                        (modification_model_element, modification_layout_element)
-                    )
             cd_species_template = get_template_from_species_alias(
                 cd_species_alias, reading_context.xml_id_to_xml_element
             )
@@ -809,10 +797,7 @@ class CellDesignerReader(Reader):
             ):
                 residue_xml_id = cd_modification_residue.get("id")
                 if residue_xml_id not in covered_cd_residue_ids:
-                    (
-                        empty_modification_model_element,
-                        empty_modification_layout_element,
-                    ) = cls._make_and_add_species_modification(
+                    cls._make_and_add_species_modification(
                         reading_context,
                         cd_species_modification={
                             "state": "empty",
@@ -822,16 +807,6 @@ class CellDesignerReader(Reader):
                         super_model_element=model_element,
                         super_layout_element=layout_element,
                     )
-                    if (
-                        empty_modification_model_element is not None
-                        and empty_modification_layout_element is not None
-                    ):
-                        auxiliary_map_elements.append(
-                            (
-                                empty_modification_model_element,
-                                empty_modification_layout_element,
-                            )
-                        )
             number_of_structural_states_without_value = 0
             for cd_species_structural_state in get_species_structural_states(
                 cd_species
@@ -841,10 +816,7 @@ class CellDesignerReader(Reader):
                     order = number_of_structural_states_without_value
                 else:
                     order = None
-                (
-                    structural_state_model_element,
-                    structural_state_layout_element,
-                ) = cls._make_and_add_species_structural_state(
+                cls._make_and_add_species_structural_state(
                     reading_context,
                     cd_species_structural_state=cd_species_structural_state,
                     super_cd_element=cd_species_alias,
@@ -852,16 +824,6 @@ class CellDesignerReader(Reader):
                     super_layout_element=layout_element,
                     order=order,
                 )
-                if (
-                    structural_state_model_element is not None
-                    and structural_state_layout_element is not None
-                ):
-                    auxiliary_map_elements.append(
-                        (
-                            structural_state_model_element,
-                            structural_state_layout_element,
-                        )
-                    )
             cd_subunits = [
                 reading_context.xml_id_to_xml_element[cd_subunit_id]
                 for cd_subunit_id in reading_context.cd_complex_alias_id_to_cd_included_species_ids[
@@ -879,11 +841,8 @@ class CellDesignerReader(Reader):
             if reading_context.model is not None and model_element is not None:
                 model_element = object_from_builder(model_element)
                 if super_model_element is None:  # species case
-                    model_element = register_model_element(
-                        reading_context,
-                        model_element,
-                        reading_context.model.species,
-                        cd_species.get("id"),
+                    model_element = add_top_level_model_element(
+                        reading_context, model_element, cd_species.get("id")
                     )
                     _reading_model.make_and_add_annotations(
                         reading_context,
@@ -898,10 +857,8 @@ class CellDesignerReader(Reader):
                         source_id=cd_species.get("id"),
                     )
                 else:  # included species case
-                    model_element = add_or_replace_element_in_set(
-                        model_element,
-                        super_model_element.subunits,
-                        func=lambda new, old: new.id_ < old.id_,
+                    model_element = add_child_model_element(
+                        reading_context, model_element, super_model_element.subunits
                     )
                     _reading_model.make_and_add_annotations_from_notes(
                         reading_context,
@@ -935,16 +892,8 @@ class CellDesignerReader(Reader):
                 and reading_context.layout is not None
                 and model_element is not None
             ):
-                for (
-                    auxiliary_model_element,
-                    auxiliary_layout_element,
-                ) in auxiliary_map_elements:
-                    reading_context.layout_model_mapping.add_mapping(
-                        auxiliary_layout_element,
-                        auxiliary_model_element,
-                    )
-                reading_context.layout_model_mapping.add_mapping(
-                    layout_element, model_element
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
                 )
         return model_element, layout_element
 
@@ -978,7 +927,9 @@ class CellDesignerReader(Reader):
                 )
                 model_element.id_ = cd_species_modification_id
                 model_element = object_from_builder(model_element)
-                super_model_element.modifications.add(model_element)
+                model_element = add_child_model_element(
+                    reading_context, model_element, super_model_element.modifications
+                )
             else:
                 model_element = None
             if reading_context.layout is not None:
@@ -1003,6 +954,10 @@ class CellDesignerReader(Reader):
                 super_layout_element.layout_elements.append(layout_element)
             else:
                 layout_element = None
+            if model_element is not None and layout_element is not None:
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         return model_element, layout_element
 
     @classmethod
@@ -1028,7 +983,9 @@ class CellDesignerReader(Reader):
             )
             model_element.id_ = cd_structural_state_id
             model_element = object_from_builder(model_element)
-            super_model_element.structural_states.add(model_element)
+            model_element = add_child_model_element(
+                reading_context, model_element, super_model_element.structural_states
+            )
         else:
             model_element = None
         if reading_context.layout is not None:
@@ -1044,6 +1001,8 @@ class CellDesignerReader(Reader):
             super_layout_element.layout_elements.append(layout_element)
         else:
             layout_element = None
+        if model_element is not None and layout_element is not None:
+            reading_context.layout_model_pairs.append((layout_element, model_element))
         return model_element, layout_element
 
     @classmethod
@@ -1108,132 +1067,54 @@ class CellDesignerReader(Reader):
                 make_base_product_layouts = False
             if reading_context.layout is not None:
                 layout_element = object_from_builder(layout_element)
-            participant_map_elements = []
-            layout_elements_for_mapping = []
             for n_cd_base_reactant, cd_base_reactant in enumerate(cd_base_reactants):
-                reactant_model_element, reactant_layout_element = (
-                    cls._make_and_add_reactant_from_base(
-                        reading_context,
-                        cd_base_reactant=cd_base_reactant,
-                        n_cd_base_reactant=n_cd_base_reactant,
-                        make_layout=make_base_reactant_layouts,
-                        super_cd_element=cd_reaction,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_reactant_from_base(
+                    reading_context,
+                    cd_base_reactant=cd_base_reactant,
+                    n_cd_base_reactant=n_cd_base_reactant,
+                    make_layout=make_base_reactant_layouts,
+                    super_cd_element=cd_reaction,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if (
-                    reading_context.model is not None
-                    and reading_context.layout is not None
-                ):
-                    if reactant_layout_element is not None:
-                        participant_map_elements.append(
-                            (reactant_model_element, reactant_layout_element)
-                        )
-                        layout_elements_for_mapping.append(reactant_layout_element)
-                    layout_elements_for_mapping.append(
-                        reading_context.xml_id_to_layout_element[
-                            cd_base_reactant.get("alias")
-                        ]
-                    )
             for cd_reactant_link in get_reactant_links(cd_reaction):
-                reactant_model_element, reactant_layout_element = (
-                    cls._make_and_add_reactant_from_link(
-                        reading_context,
-                        cd_reactant_link=cd_reactant_link,
-                        super_cd_element=cd_reaction,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_reactant_from_link(
+                    reading_context,
+                    cd_reactant_link=cd_reactant_link,
+                    super_cd_element=cd_reaction,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if (
-                    reading_context.model is not None
-                    and reading_context.layout is not None
-                ):
-                    participant_map_elements.append(
-                        (reactant_model_element, reactant_layout_element)
-                    )
-                    layout_elements_for_mapping.append(reactant_layout_element)
-                    layout_elements_for_mapping.append(
-                        reading_context.xml_id_to_layout_element[
-                            cd_reactant_link.get("alias")
-                        ]
-                    )
             for n_cd_base_product, cd_base_product in enumerate(cd_base_products):
-                product_model_element, product_layout_element = (
-                    cls._make_and_add_product_from_base(
-                        reading_context,
-                        cd_base_product=cd_base_product,
-                        n_cd_base_product=n_cd_base_product,
-                        make_layout=make_base_product_layouts,
-                        super_cd_element=cd_reaction,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_product_from_base(
+                    reading_context,
+                    cd_base_product=cd_base_product,
+                    n_cd_base_product=n_cd_base_product,
+                    make_layout=make_base_product_layouts,
+                    super_cd_element=cd_reaction,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if (
-                    reading_context.model is not None
-                    and reading_context.layout is not None
-                ):
-                    if product_layout_element is not None:
-                        participant_map_elements.append(
-                            (product_model_element, product_layout_element)
-                        )
-                        layout_elements_for_mapping.append(product_layout_element)
-                    layout_elements_for_mapping.append(
-                        reading_context.xml_id_to_layout_element[
-                            cd_base_product.get("alias")
-                        ]
-                    )
             for cd_product_link in get_product_links(cd_reaction):
-                product_model_element, product_layout_element = (
-                    cls._make_and_add_product_from_link(
-                        reading_context,
-                        cd_product_link=cd_product_link,
-                        super_cd_element=cd_reaction,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_product_from_link(
+                    reading_context,
+                    cd_product_link=cd_product_link,
+                    super_cd_element=cd_reaction,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if (
-                    reading_context.model is not None
-                    and reading_context.layout is not None
-                ):
-                    participant_map_elements.append(
-                        (product_model_element, product_layout_element)
-                    )
-                    layout_elements_for_mapping.append(product_layout_element)
-                    layout_elements_for_mapping.append(
-                        reading_context.xml_id_to_layout_element[
-                            cd_product_link.get("alias")
-                        ]
-                    )
             for cd_reaction_modification in get_reaction_modifications(cd_reaction):
-                modifier_model_element, modifier_layout_element = (
-                    cls._make_and_add_modifier(
-                        reading_context,
-                        cd_reaction_modification=cd_reaction_modification,
-                        super_cd_element=cd_reaction,
-                        super_model_element=model_element,
-                        super_layout_element=layout_element,
-                    )
+                cls._make_and_add_modifier(
+                    reading_context,
+                    cd_reaction_modification=cd_reaction_modification,
+                    super_cd_element=cd_reaction,
+                    super_model_element=model_element,
+                    super_layout_element=layout_element,
                 )
-                if (
-                    reading_context.model is not None
-                    and reading_context.layout is not None
-                ):
-                    participant_map_elements.append(
-                        (modifier_model_element, modifier_layout_element)
-                    )
-                    layout_elements_for_mapping.append(modifier_layout_element)
-                    layout_elements_for_mapping.append(modifier_layout_element.source)
             if reading_context.model is not None:
                 model_element = object_from_builder(model_element)
-                model_element = register_model_element(
-                    reading_context,
-                    model_element,
-                    reading_context.model.reactions,
-                    cd_reaction.get("id"),
+                model_element = add_top_level_model_element(
+                    reading_context, model_element, cd_reaction.get("id")
                 )
                 _reading_model.make_and_add_annotations(
                     reading_context,
@@ -1252,34 +1133,10 @@ class CellDesignerReader(Reader):
                 reading_context.xml_id_to_layout_element[layout_element.id_] = (
                     layout_element
                 )
-                layout_elements_for_mapping.append(layout_element)
             if reading_context.model is not None and reading_context.layout is not None:
-                expanded = set()
-                for layout_element_for_mapping in layout_elements_for_mapping:
-                    existing_key = (
-                        reading_context.layout_model_mapping.representative_to_key.get(
-                            layout_element_for_mapping
-                        )
-                    )
-                    if existing_key is not None:
-                        expanded |= existing_key
-                    else:
-                        expanded.add(layout_element_for_mapping)
-                reading_context.layout_model_mapping.add_mapping(
-                    frozenset(expanded),
-                    model_element,
-                    representative=layout_element,
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
                 )
-                for (
-                    participant_model_element,
-                    participant_layout_element,
-                ) in participant_map_elements:
-                    if participant_model_element is None:
-                        continue
-                    reading_context.layout_model_mapping.add_mapping(
-                        participant_layout_element,
-                        participant_model_element,
-                    )
         return model_element, layout_element
 
     @classmethod
@@ -1303,10 +1160,8 @@ class CellDesignerReader(Reader):
             )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
-                model_element = add_or_replace_element_in_set(
-                    model_element,
-                    super_model_element.reactants,
-                    func=lambda new, old: new.id_ < old.id_,
+                model_element = add_child_model_element(
+                    reading_context, model_element, super_model_element.reactants
                 )
                 reading_context.xml_id_to_model_element.add(
                     model_element.id_, model_element
@@ -1326,6 +1181,8 @@ class CellDesignerReader(Reader):
             reading_context.layout.layout_elements.append(layout_element)
         else:
             layout_element = None
+        if model_element is not None and layout_element is not None:
+            reading_context.layout_model_pairs.append((layout_element, model_element))
         return model_element, layout_element
 
     @classmethod
@@ -1347,10 +1204,8 @@ class CellDesignerReader(Reader):
             )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
-                model_element = add_or_replace_element_in_set(
-                    model_element,
-                    super_model_element.reactants,
-                    func=lambda new, old: new.id_ < old.id_,
+                model_element = add_child_model_element(
+                    reading_context, model_element, super_model_element.reactants
                 )
                 reading_context.xml_id_to_model_element.add(
                     model_element.id_, model_element
@@ -1368,6 +1223,8 @@ class CellDesignerReader(Reader):
             reading_context.layout.layout_elements.append(layout_element)
         else:
             layout_element = None
+        if model_element is not None and layout_element is not None:
+            reading_context.layout_model_pairs.append((layout_element, model_element))
         return model_element, layout_element
 
     @classmethod
@@ -1391,10 +1248,8 @@ class CellDesignerReader(Reader):
             )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
-                model_element = add_or_replace_element_in_set(
-                    model_element,
-                    super_model_element.products,
-                    func=lambda new, old: new.id_ < old.id_,
+                model_element = add_child_model_element(
+                    reading_context, model_element, super_model_element.products
                 )
                 reading_context.xml_id_to_model_element.add(
                     model_element.id_, model_element
@@ -1414,6 +1269,8 @@ class CellDesignerReader(Reader):
             reading_context.layout.layout_elements.append(layout_element)
         else:
             layout_element = None
+        if model_element is not None and layout_element is not None:
+            reading_context.layout_model_pairs.append((layout_element, model_element))
         return model_element, layout_element
 
     @classmethod
@@ -1435,10 +1292,8 @@ class CellDesignerReader(Reader):
             )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
-                model_element = add_or_replace_element_in_set(
-                    model_element,
-                    super_model_element.products,
-                    func=lambda new, old: new.id_ < old.id_,
+                model_element = add_child_model_element(
+                    reading_context, model_element, super_model_element.products
                 )
                 reading_context.xml_id_to_model_element.add(
                     model_element.id_, model_element
@@ -1456,6 +1311,8 @@ class CellDesignerReader(Reader):
             reading_context.layout.layout_elements.append(layout_element)
         else:
             layout_element = None
+        if model_element is not None and layout_element is not None:
+            reading_context.layout_model_pairs.append((layout_element, model_element))
         return model_element, layout_element
 
     @classmethod
@@ -1484,6 +1341,17 @@ class CellDesignerReader(Reader):
             modifier_metaid = get_modifier_metaid(
                 cd_reaction_modification, super_cd_element
             )
+            if modifier_metaid is None:
+                cd_reaction_id = super_cd_element.get("id")
+                cd_species_ids = cd_reaction_modification.get("modifiers").replace(
+                    ",", "_"
+                )
+                cd_alias_ids = cd_reaction_modification.get("aliases").replace(",", "_")
+                modifier_id = f"{cd_reaction_id}_{cd_species_ids}"
+                modifier_layout_id = f"{cd_reaction_id}_{cd_alias_ids}_layout"
+            else:
+                modifier_id = modifier_metaid
+                modifier_layout_id = f"{modifier_metaid}_layout"
             if reading_context.model is not None:
                 if not has_boolean_input:
                     source_model_element = next(
@@ -1498,16 +1366,14 @@ class CellDesignerReader(Reader):
                     reading_context,
                     model_element_cls,
                     source_model_element,
+                    id_=modifier_id,
                     metaid=modifier_metaid,
                 )
                 model_element = object_from_builder(model_element)
-                model_element = add_or_replace_element_in_set(
-                    model_element,
-                    super_model_element.modifiers,
+                model_element = add_child_model_element(
+                    reading_context, model_element, super_model_element.modifiers
                 )
-                reading_context.xml_id_to_model_element.add(
-                    modifier_metaid, model_element
-                )
+                reading_context.xml_id_to_model_element.add(modifier_id, model_element)
             else:
                 model_element = None
             if reading_context.layout is not None:
@@ -1523,7 +1389,7 @@ class CellDesignerReader(Reader):
                     super_layout_element,
                     has_boolean_input,
                 )
-                layout_element.id_ = f"{modifier_metaid}_layout"
+                layout_element.id_ = modifier_layout_id
                 layout_element = object_from_builder(layout_element)
                 reading_context.layout.layout_elements.append(layout_element)
                 reading_context.xml_id_to_layout_element[layout_element.id_] = (
@@ -1531,6 +1397,10 @@ class CellDesignerReader(Reader):
                 )
             else:
                 layout_element = None
+            if model_element is not None and layout_element is not None:
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
+                )
         return model_element, layout_element
 
     @classmethod
@@ -1564,7 +1434,6 @@ class CellDesignerReader(Reader):
                 layout_element.id_ = f"{cd_gate_id}_layout"
                 layout_element = object_from_builder(layout_element)
                 reading_context.layout.layout_elements.append(layout_element)
-                gate_layout_elements = [layout_element]
             else:
                 layout_element = None
             for cd_input_id in cd_input_ids:
@@ -1582,7 +1451,9 @@ class CellDesignerReader(Reader):
                     )
                     input_model_element.id_ = f"{cd_gate_id}_input_{cd_input_id}"
                     input_model_element = object_from_builder(input_model_element)
-                    model_element.inputs.add(input_model_element)
+                    input_model_element = add_child_model_element(
+                        reading_context, input_model_element, model_element.inputs
+                    )
                 if reading_context.layout is not None:
                     input_layout_element = reading_context.xml_id_to_layout_element[
                         cd_input_id
@@ -1595,26 +1466,18 @@ class CellDesignerReader(Reader):
                     logic_arc.id_ = f"{cd_gate_id}_arc_{cd_input_id}"
                     logic_arc = object_from_builder(logic_arc)
                     reading_context.layout.layout_elements.append(logic_arc)
-                    gate_layout_elements.append(logic_arc)
-                    gate_layout_elements.append(input_layout_element)
                 if input_model_element is not None and logic_arc is not None:
-                    reading_context.layout_model_mapping.add_mapping(
-                        logic_arc,
-                        input_model_element,
+                    reading_context.layout_model_pairs.append(
+                        (logic_arc, input_model_element)
                     )
             if model_element is not None:
                 model_element = object_from_builder(model_element)
-                model_element = register_model_element(
-                    reading_context,
-                    model_element,
-                    reading_context.model.boolean_logic_gates,
-                    cd_gate_id,
+                model_element = add_top_level_model_element(
+                    reading_context, model_element, cd_gate_id
                 )
             if model_element is not None and layout_element is not None:
-                reading_context.layout_model_mapping.add_mapping(
-                    frozenset(gate_layout_elements),
-                    model_element,
-                    representative=layout_element,
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
                 )
         return model_element, layout_element
 
@@ -1696,11 +1559,8 @@ class CellDesignerReader(Reader):
                     target_model_element,
                 )
                 model_element = object_from_builder(model_element)
-                model_element = register_model_element(
-                    reading_context,
-                    model_element,
-                    reading_context.model.modulations,
-                    cd_reaction.get("id"),
+                model_element = add_top_level_model_element(
+                    reading_context, model_element, cd_reaction.get("id")
                 )
                 _reading_model.make_and_add_annotations(
                     reading_context,
@@ -1742,29 +1602,7 @@ class CellDesignerReader(Reader):
             else:
                 layout_element = None
             if reading_context.model is not None and reading_context.layout is not None:
-                source_mapping_key = (
-                    reading_context.layout_model_mapping.representative_to_key.get(
-                        source_layout_element
-                    )
-                )
-                if source_mapping_key is not None:
-                    source_layout_elements = source_mapping_key
-                else:
-                    source_layout_elements = frozenset([source_layout_element])
-                target_mapping_key = (
-                    reading_context.layout_model_mapping.representative_to_key.get(
-                        target_layout_element
-                    )
-                )
-                if target_mapping_key is not None:
-                    target_layout_elements = target_mapping_key
-                else:
-                    target_layout_elements = frozenset([target_layout_element])
-                reading_context.layout_model_mapping.add_mapping(
-                    frozenset([layout_element])
-                    | source_layout_elements
-                    | target_layout_elements,
-                    model_element,
-                    representative=layout_element,
+                reading_context.layout_model_pairs.append(
+                    (layout_element, model_element)
                 )
         return model_element, layout_element

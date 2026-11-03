@@ -144,19 +144,6 @@ def test_get_or_return_element_from_collection():
     assert momapy.utils.get_or_return_element_from_collection(5, collection) == 5
 
 
-def test_add_or_replace_element_in_set():
-    """Test add_or_replace_element_in_set function."""
-    s = {1, 2, 3}
-    result = momapy.utils.add_or_replace_element_in_set(4, s)
-    assert result == 4
-    assert 4 in s
-
-    # Test with existing element
-    result = momapy.utils.add_or_replace_element_in_set(2, s)
-    assert result == 2
-    assert 2 in s
-
-
 def test_make_uuid4_as_str():
     """Test make_uuid4_as_str function."""
     uuid1 = momapy.utils.make_uuid4_as_str()

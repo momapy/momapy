@@ -425,6 +425,37 @@ def get_alias_model_element(
     )
 
 
+def get_species_merge_key(
+    reading_context: "CellDesignerReadingContext",
+    cd_alias_id: str,
+) -> tuple[typing.Any, ...]:
+    """Return the merge key of a species alias.
+
+    The merge key is the tuple of the species of the complex aliases that
+    hold the alias, from the outermost one, followed by the species of the
+    alias. Two aliases have equal merge keys if and only if their species
+    become one element after merging.
+
+    Args:
+        reading_context: The reading context.
+        cd_alias_id: The id of the species alias.
+
+    Returns:
+        The merge key.
+    """
+    species_model_element = next(
+        iter(reading_context.xml_id_to_model_element.get(cd_alias_id, ())), None
+    )
+    cd_complex_alias_id = reading_context.xml_id_to_xml_element[cd_alias_id].get(
+        "complexSpeciesAlias"
+    )
+    if cd_complex_alias_id is None:
+        return (species_model_element,)
+    return get_species_merge_key(reading_context, cd_complex_alias_id) + (
+        species_model_element,
+    )
+
+
 def make_participant(
     reading_context: "CellDesignerReadingContext",
     model_element_cls: type,
@@ -433,8 +464,9 @@ def make_participant(
 ) -> typing.Any:
     """Create a reactant or product model builder from a participant entry.
 
-    The entries of one reaction side whose aliases refer to the same species
-    model element give one participant: it is a base participant if one of
+    The entries of one reaction side whose aliases refer to species that
+    become one element after merging (see `get_species_merge_key`) give one
+    participant: it is a base participant if one of
     the entries is a base entry, and its stoichiometry is the number of
     references (a reference with a stoichiometry counting for that value).
 
@@ -462,17 +494,18 @@ def make_participant(
         cd_participant_links = get_product_links(cd_reaction)
         cd_species_references = get_products(cd_reaction)
     species_model_element = get_alias_model_element(reading_context, cd_participant)
+    merge_key = get_species_merge_key(reading_context, cd_participant.get("alias"))
     cd_base_group = [
         cd_base_participant
         for cd_base_participant in cd_base_participants
-        if get_alias_model_element(reading_context, cd_base_participant)
-        is species_model_element
+        if get_species_merge_key(reading_context, cd_base_participant.get("alias"))
+        == merge_key
     ]
     cd_link_group = [
         cd_participant_link
         for cd_participant_link in cd_participant_links
-        if get_alias_model_element(reading_context, cd_participant_link)
-        is species_model_element
+        if get_species_merge_key(reading_context, cd_participant_link.get("alias"))
+        == merge_key
     ]
     cd_species_reference_group = [
         get_species_reference(cd_member, cd_species_references)
@@ -510,7 +543,8 @@ def make_modifier(
     reading_context: "CellDesignerReadingContext",
     model_element_cls: typing.Any,
     source_model_element: typing.Any,
-    metaid: str,
+    id_: str,
+    metaid: str | None,
 ) -> typing.Any:
     """Create a modifier model builder.
 
@@ -518,7 +552,8 @@ def make_modifier(
         reading_context: The reading context.
         model_element_cls: The modifier model element class to instantiate.
         source_model_element: The species model element referred to by the modifier.
-        metaid: The SBML ``metaid`` of the modifier reference, used as id.
+        id_: The id of the modifier.
+        metaid: The SBML ``metaid`` of the modifier reference, or ``None``.
 
     Returns:
         A modifier model builder, or ``None`` if no model is being built.
@@ -527,7 +562,7 @@ def make_modifier(
         return None
     model_element = new_builder_object(model_element_cls)
     model_element.referred_element = source_model_element
-    model_element.id_ = metaid
+    model_element.id_ = id_
     model_element.metaid = metaid
     return model_element
 

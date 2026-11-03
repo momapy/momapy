@@ -345,7 +345,7 @@ User-facing reference: see the "Layout-model mapping catalogue" section in the m
 
 Every value in the mapping is a plain model element — there are no tuple values. Keys are either a singleton layout element or a frozenset of layout elements.
 
-The keys of a map built by `momapy.core.make_map`, and of an SBGN-ML map read, are computed from the `(layout_element, model_element)` pairs by `momapy.core._assembling.make_layout_model_mapping`. The key of a layout element that draws a model element holds the layout element plus the keys of the connected layout elements (arc ends, arcs ending on it, its `Node.container`, nodes it contains) that draw a related element (a descendant of the model element, or an element referred to by it or by a descendant), or that draw nothing and are connected by an arc end. A key with one element is a singleton key, otherwise a frozenset key with the layout element of the pair as representative. In the SBGN catalogues this gives:
+The keys of a map built by `momapy.core.make_map`, and of an SBGN-ML or CellDesigner map read, are computed from the `(layout_element, model_element)` pairs by `momapy.core._assembling.make_layout_model_mapping`. The key of a layout element that draws a model element holds the layout element plus the keys of the connected layout elements (arc ends, arcs ending on it, its `Node.container`, nodes it contains) that draw a related element (a descendant of the model element, or an element referred to by it or by a descendant), or that draw nothing and are connected by an arc end. A key with one element is a singleton key, otherwise a frozenset key with the layout element of the pair as representative. In the SBGN catalogues this gives:
 
 - Simple elements (compartments, entity pools, activities) and child elements (state variables, units of information, subunits): singleton layout key → model element; with a container that draws the compartment of the model element, **frozenset** key (layout + key of the container)
 - Arcs that draw a child (reactants/products, logical operator inputs, tag/terminal references): **frozenset** key (arc + key of the layout at its end) → child model element
@@ -353,8 +353,6 @@ The keys of a map built by `momapy.core.make_map`, and of an SBGN-ML map read, a
 - Logical operators: **frozenset** key (operator layout + keys of its logic arcs) → operator model; singleton key with no arc
 - Modulations: **frozenset** key (modulation arc + key of its source + key of its target) → modulation model
 - Tag/terminal with references: **frozenset** key (tag/terminal layout + keys of its reference arcs) → tag/terminal model
-
-The CellDesigner reader still builds its keys with its own code (child arcs as singleton keys) until it moves to the shared code.
 
 - A frozenset key has one or more **representatives** registered in the public `representative_to_key` table (a `FrozenSurjectionDict` in the frozen `LayoutModelMapping`, a `SurjectionDict` in the mutable `LayoutModelMappingBuilder`, so `inverse` gives frozenset → representatives in O(1)). A model element drawn several times owns one key per drawn copy, each with its own representative; do not add code that assumes a single key or a single representative
 
@@ -441,7 +439,7 @@ More complex than SBGN: model and layout often use different XML ID sources (e.g
 | StructuralState | `f"{species_id}_{value}"` | composite | `f"{species_id}_{value}_layout"` | composite | no | Deterministic from species + value; with no value, `structural_state_{order}` replaces the value |
 | Reactant (base/link) | `metaid` of the first `speciesReference` of the group, or `f"{reaction_id}_{species_id}"` | sbml:`speciesReference/@metaid` or composite | `f"{metaid}_layout"` of the `speciesReference` matched by `celldesigner:alias`, or `f"{reaction_id}_{alias_id}_layout"` | sbml or composite | yes | metaid preferred; layout only for link reactants and some base; one participant per group (see Notes) |
 | Product (base/link) | `metaid` of the first `speciesReference` of the group, or `f"{reaction_id}_{species_id}"` | sbml:`speciesReference/@metaid` or composite | `f"{metaid}_layout"` of the `speciesReference` matched by `celldesigner:alias`, or `f"{reaction_id}_{alias_id}_layout"` | sbml or composite | yes | metaid preferred; layout only for link products and some base; one participant per group (see Notes) |
-| Modulator | `metaid` of the first `modifierSpeciesReference` read for the modifier | sbml:`modifierSpeciesReference/@metaid` | `f"{metaid}_layout"` with the `metaid` of the `modifierSpeciesReference` matched by `celldesigner:alias` | derived from metaid | yes | metaid always present; one modifier per species and class; one arc per modification |
+| Modulator | smallest `metaid` of the `modifierSpeciesReference`s of the modifier, or `f"{reaction_id}_{species_ids}"` | sbml:`modifierSpeciesReference/@metaid` or composite | `f"{metaid}_layout"` with the `metaid` of the `modifierSpeciesReference` matched by `celldesigner:alias`, or `f"{reaction_id}_{alias_ids}_layout"` | derived from metaid or composite | yes | metaid preferred; for a gate (no `modifierSpeciesReference`) or a file without metaid, the composite ids join the `modifiers` and `aliases` of the modification with `_`; one modifier per species and class; one arc per modification |
 | BooleanGate | `f"{reaction_id}_gate_{sorted_aliases}"` | composite | `f"{...}_layout"` | composite | model only | Deterministic from reaction + sorted aliases |
 | BooleanGateInput / LogicArcLayout | `f"{gate_id}_input_{input_alias}"` | composite | `f"{gate_id}_arc_{input_alias}"` | composite | no | Frozen child of gate |
 | Reaction | `reaction_id` | sbml:`reaction/@id` | `f"{reaction_id}_layout"` | derived from sbml | yes | No reaction alias in CD |
@@ -452,7 +450,7 @@ More complex than SBGN: model and layout often use different XML ID sources (e.g
 - **`_layout` suffix**: Used when model and layout share the same XML ID source (reactions, modulations, modulators with metaid). No suffix needed when they come from different XML elements (species vs alias, compartment vs alias)
 - **metaid**: SBML `metaid` attribute is preferred for Reactants, Products, and Modulators. Falls back to composite ID or UUID when absent
 - **Composite IDs**: `f"{parent_id}_{child_id}"` for ModificationResidue and Region (child IDs are only unique within a parent template)
-- **Participant groups**: the base/link entries of one reaction side whose aliases refer to the same species model element give one Reactant (or Product), with `base=True` if one entry is a base and `stoichiometry` = number of references; the writer shares it between the `speciesReference`s it writes
+- **Participant groups**: the base/link entries of one reaction side whose aliases refer to species that become one element after merging give one Reactant (or Product), with `base=True` if one entry is a base and `stoichiometry` = number of references; the writer shares it between the `speciesReference`s it writes
 
 ## Plans
 

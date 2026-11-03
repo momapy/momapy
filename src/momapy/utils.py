@@ -53,7 +53,6 @@ __all__ = [
     "IdentityMultiDict",
     "IdentitySurjectionDict",
     "SurjectionDict",
-    "add_or_replace_element_in_set",
     "check_file_exists",
     "check_parent_dir_exists",
     "display",
@@ -650,61 +649,6 @@ def get_or_return_element_from_collection(
     if existing_element is not None:
         return existing_element
     return element
-
-
-def add_or_replace_element_in_set(
-    element: _T,
-    set_: set[_T],
-    func: collections.abc.Callable[[_T, _T], bool] | None = None,
-    cache: dict[_T, _T] | None = None,
-) -> _T:
-    """Add element to set or replace existing element based on condition.
-
-    Membership is tested by equality (``==``), not identity. If the
-    element doesn't exist in the set, it is added. If it exists and a
-    comparison function is provided, the existing element may be replaced
-    if the function returns True.
-
-    Args:
-        element: The element to add or replace with.
-        set_: The set to modify.
-        func: Optional comparison function func(new, existing) that returns
-            True if the new element should replace the existing one.
-        cache: Optional dict mapping elements to themselves. When provided,
-            uses O(1) dict lookup instead of O(n) linear scan. The cache
-            is kept in sync with the set on add/replace.
-
-    Returns:
-        The element that is now in the set (either the existing or new one).
-
-    Examples:
-        ```python
-        s = {1, 2, 3}
-        add_or_replace_element_in_set(4, s)
-        4 in s
-
-        # Replace only if new value is greater
-        add_or_replace_element_in_set(2, s, lambda new, old: new > old)
-        ```
-    """
-    if cache is not None:
-        existing_element = cache.get(element)
-    else:
-        existing_element = get_element_from_collection(element, set_)
-    if existing_element is None:
-        set_.add(element)
-        if cache is not None:
-            cache[element] = element
-        return element
-    # Replaces existing element by input element if func(element, existing_element) is True
-    elif func is not None and func(element, existing_element):
-        set_.remove(existing_element)
-        set_.add(element)
-        if cache is not None:
-            del cache[existing_element]
-            cache[element] = element
-        return element
-    return existing_element
 
 
 def make_uuid4_as_str() -> str:
