@@ -19,6 +19,10 @@ layout elements of its key in
 | [Reactant][momapy.celldesigner.Reactant], [Product][momapy.celldesigner.Product] | The [ConsumptionLayout][momapy.celldesigner.ConsumptionLayout] or [ProductionLayout][momapy.celldesigner.ProductionLayout] + the key of its target layout element | The [ConsumptionLayout][momapy.celldesigner.ConsumptionLayout] or [ProductionLayout][momapy.celldesigner.ProductionLayout] |
 | [KnownOrUnknownModulator][momapy.celldesigner.KnownOrUnknownModulator] and subclasses | The `*Layout` (e.g. [CatalysisLayout][momapy.celldesigner.CatalysisLayout]) + the key of its source layout element | The `*Layout` |
 | [BooleanLogicGateInput][momapy.celldesigner.BooleanLogicGateInput] | The [LogicArcLayout][momapy.celldesigner.LogicArcLayout] + the key of its target layout element | The [LogicArcLayout][momapy.celldesigner.LogicArcLayout] |
+
+An arc drawn to a subunit draws an element that refers to the outermost
+complex holding the subunit; its key holds the key of the subunit layout
+element.
 """
 
 from momapy.celldesigner.elements import (

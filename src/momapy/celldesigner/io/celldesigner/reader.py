@@ -1354,13 +1354,10 @@ class CellDesignerReader(Reader):
                 modifier_layout_id = f"{modifier_metaid}_layout"
             if reading_context.model is not None:
                 if not has_boolean_input:
-                    source_model_element = next(
-                        iter(
-                            reading_context.xml_id_to_model_element.get(
-                                cd_reaction_modification.get("aliases"), ()
-                            )
-                        ),
-                        None,
+                    source_model_element = (
+                        _reading_model.get_outermost_species_model_element(
+                            reading_context, cd_reaction_modification.get("aliases")
+                        )
                     )
                 model_element = _reading_model.make_modifier(
                     reading_context,
@@ -1440,11 +1437,10 @@ class CellDesignerReader(Reader):
                 input_model_element = None
                 logic_arc = None
                 if reading_context.model is not None:
-                    source_model_element = next(
-                        iter(
-                            reading_context.xml_id_to_model_element.get(cd_input_id, ())
-                        ),
-                        None,
+                    source_model_element = (
+                        _reading_model.get_outermost_species_model_element(
+                            reading_context, cd_input_id
+                        )
                     )
                     input_model_element = _reading_model.make_logic_gate_input(
                         reading_context, source_model_element
@@ -1529,21 +1525,15 @@ class CellDesignerReader(Reader):
                 )
             if reading_context.model is not None:
                 if not has_boolean_input:
-                    source_model_element = next(
-                        iter(
-                            reading_context.xml_id_to_model_element.get(
-                                cd_base_reactant.get("alias"), ()
-                            )
-                        ),
-                        None,
-                    )
-                target_model_element = next(
-                    iter(
-                        reading_context.xml_id_to_model_element.get(
-                            cd_base_product.get("alias"), ()
+                    source_model_element = (
+                        _reading_model.get_outermost_species_model_element(
+                            reading_context, cd_base_reactant.get("alias")
                         )
-                    ),
-                    None,
+                    )
+                target_model_element = (
+                    _reading_model.get_outermost_species_model_element(
+                        reading_context, cd_base_product.get("alias")
+                    )
                 )
                 # CellDesigner rewrites a phenotype-targeting INHIBITION to
                 # NEGATIVE_INFLUENCE on its next save, so the reaction type

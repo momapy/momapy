@@ -1,7 +1,5 @@
 """Tests for the merging of equal CellDesigner elements at the end of reading."""
 
-import pytest
-
 import momapy.io.core
 from momapy.celldesigner.model import Catalyzer
 from momapy.celldesigner.model import NegativeInfluence
@@ -294,8 +292,7 @@ class TestParticipantGroups:
         reactant = next(iter(reactants))
         assert reactant.base is True
         assert reactant.stoichiometry == 2.0
-        complex_ = get_species(map_, "c1")
-        assert reactant.referred_element is get_subunit(complex_, "p0")
+        assert reactant.referred_element is get_species(map_, "c1")
 
     def test_base_and_link_on_subunits_of_unequal_complexes(self, tmp_path):
         file_path = make_map_file(
@@ -306,30 +303,37 @@ class TestParticipantGroups:
         )
         map_ = momapy.io.core.read(file_path).obj
         reactants = get_reaction(map_).reactants
-        assert {(reactant.base, reactant.stoichiometry) for reactant in reactants} == {
-            (True, None),
-            (False, None),
-        }
+        assert {
+            (reactant.base, reactant.referred_element.id_) for reactant in reactants
+        } == {(True, "c1"), (False, "c2")}
 
-    def test_two_links_on_subunits_of_unequal_complexes_raise(self, tmp_path):
+    def test_two_links_on_subunits_of_unequal_complexes(self, tmp_path):
         file_path = make_map_file(
             tmp_path,
             complex_2_name="D",
             reactant_links=[("p1", "sa1"), ("p2", "sa2")],
         )
-        with pytest.raises(ValueError):
-            momapy.io.core.read(file_path)
+        map_ = momapy.io.core.read(file_path).obj
+        reactants = get_reaction(map_).reactants
+        assert {reactant.referred_element.id_ for reactant in reactants} == {
+            "b",
+            "c1",
+            "c2",
+        }
 
 
-class TestLostReferences:
-    def test_modulations_from_subunits_of_unequal_complexes_raise(self, tmp_path):
+class TestSubunitReferences:
+    def test_modulations_from_subunits_of_unequal_complexes(self, tmp_path):
         file_path = make_map_file(
             tmp_path,
             complex_2_name="D",
             modulation_source_aliases=[("p1", "sa1"), ("p2", "sa2")],
         )
-        with pytest.raises(ValueError):
-            momapy.io.core.read(file_path)
+        map_ = momapy.io.core.read(file_path).obj
+        assert {modulation.source.id_ for modulation in map_.model.modulations} == {
+            "c1",
+            "c2",
+        }
 
     def test_modulations_from_subunits_of_equal_complexes_merge(self, tmp_path):
         file_path = make_map_file(
@@ -339,17 +343,21 @@ class TestLostReferences:
         assert len(map_.model.modulations) == 1
         modulation = next(iter(map_.model.modulations))
         assert isinstance(modulation, NegativeInfluence)
-        complex_ = get_species(map_, "c1")
-        assert modulation.source is get_subunit(complex_, "p0")
+        assert modulation.source is get_species(map_, "c1")
 
-    def test_catalyzers_from_subunits_of_unequal_complexes_raise(self, tmp_path):
+    def test_catalyzers_from_subunits_of_unequal_complexes(self, tmp_path):
         file_path = make_map_file(
             tmp_path,
             complex_2_name="D",
             catalyzer_aliases=[("p1", "sa1"), ("p2", "sa2")],
         )
-        with pytest.raises(ValueError):
-            momapy.io.core.read(file_path)
+        map_ = momapy.io.core.read(file_path).obj
+        modifiers = get_reaction(map_).modifiers
+        assert all(isinstance(modifier, Catalyzer) for modifier in modifiers)
+        assert {modifier.referred_element.id_ for modifier in modifiers} == {
+            "c1",
+            "c2",
+        }
 
     def test_modulation_from_one_subunit(self, tmp_path):
         file_path = make_map_file(
@@ -357,8 +365,7 @@ class TestLostReferences:
         )
         map_ = momapy.io.core.read(file_path).obj
         modulation = next(iter(map_.model.modulations))
-        complex_ = get_species(map_, "c2")
-        assert modulation.source is get_subunit(complex_, "p2")
+        assert modulation.source is get_species(map_, "c2")
 
     def test_catalyzer_from_dropped_subunit(self, tmp_path):
         file_path = make_map_file(
@@ -369,7 +376,30 @@ class TestLostReferences:
         assert len(complex_.subunits) == 1
         modifier = next(iter(get_reaction(map_).modifiers))
         assert isinstance(modifier, Catalyzer)
-        assert modifier.referred_element is get_subunit(complex_, "p0")
+        assert modifier.referred_element is complex_
+
+    def test_reaction_key_holds_subunit_glyph(self, tmp_path):
+        file_path = make_map_file(
+            tmp_path, complex_2_name="D", base_reactant=("p2", "sa2")
+        )
+        map_ = momapy.io.core.read(file_path).obj
+        keys = map_.layout_model_mapping.get_mapping(get_reaction(map_))
+        assert any(
+            layout_element.id_ == "sa2" for key in keys for layout_element in key
+        )
+
+    def test_write_subunit_reference(self, tmp_path):
+        file_path = make_map_file(
+            tmp_path, complex_2_name="D", base_reactant=("p2", "sa2")
+        )
+        map_ = momapy.io.core.read(file_path).obj
+        output_file = tmp_path / "written.xml"
+        momapy.io.core.write(map_, str(output_file), writer="celldesigner")
+        text = output_file.read_text()
+        assert '<celldesigner:baseReactant species="p2" alias="sa2"' in text
+        assert '<speciesReference species="c2" metaid="re1_reactant"' in text
+        written_map = momapy.io.core.read(output_file).obj
+        assert written_map.model == map_.model
 
 
 def test_equal_gates_are_merged(tmp_path):

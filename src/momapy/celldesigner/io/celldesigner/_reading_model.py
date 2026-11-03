@@ -404,55 +404,35 @@ def make_reaction(
     return model_element
 
 
-def get_alias_model_element(
-    reading_context: "CellDesignerReadingContext",
-    cd_participant: typing.Any,
-) -> typing.Any:
-    """Return the species model element of the alias of a participant entry.
-
-    Args:
-        reading_context: The reading context.
-        cd_participant: The base participant or participant link element.
-
-    Returns:
-        The species model element, or ``None`` if the alias is unknown.
-    """
-    return next(
-        iter(
-            reading_context.xml_id_to_model_element.get(cd_participant.get("alias"), ())
-        ),
-        None,
-    )
-
-
-def get_species_merge_key(
+def get_outermost_species_model_element(
     reading_context: "CellDesignerReadingContext",
     cd_alias_id: str,
-) -> tuple[typing.Any, ...]:
-    """Return the merge key of a species alias.
+) -> typing.Any:
+    """Return the species model element of the outermost alias holding an alias.
 
-    The merge key is the tuple of the species of the complex aliases that
-    hold the alias, from the outermost one, followed by the species of the
-    alias. Two aliases have equal merge keys if and only if their species
-    become one element after merging.
+    The outermost alias is found by following the `complexSpeciesAlias`
+    attributes from the alias; it is the alias itself if the alias is not in
+    a complex. The lookup goes through aliases because the species model
+    element depends on the alias (its activity).
 
     Args:
         reading_context: The reading context.
         cd_alias_id: The id of the species alias.
 
     Returns:
-        The merge key.
+        The species model element, or ``None`` if no model element is
+        registered for the outermost alias.
     """
-    species_model_element = next(
-        iter(reading_context.xml_id_to_model_element.get(cd_alias_id, ())), None
-    )
     cd_complex_alias_id = reading_context.xml_id_to_xml_element[cd_alias_id].get(
         "complexSpeciesAlias"
     )
-    if cd_complex_alias_id is None:
-        return (species_model_element,)
-    return get_species_merge_key(reading_context, cd_complex_alias_id) + (
-        species_model_element,
+    while cd_complex_alias_id is not None:
+        cd_alias_id = cd_complex_alias_id
+        cd_complex_alias_id = reading_context.xml_id_to_xml_element[cd_alias_id].get(
+            "complexSpeciesAlias"
+        )
+    return next(
+        iter(reading_context.xml_id_to_model_element.get(cd_alias_id, ())), None
     )
 
 
@@ -464,11 +444,12 @@ def make_participant(
 ) -> typing.Any:
     """Create a reactant or product model builder from a participant entry.
 
-    The entries of one reaction side whose aliases refer to species that
-    become one element after merging (see `get_species_merge_key`) give one
-    participant: it is a base participant if one of
-    the entries is a base entry, and its stoichiometry is the number of
-    references (a reference with a stoichiometry counting for that value).
+    The participant refers to the species of the outermost alias holding the
+    alias of the entry (see `get_outermost_species_model_element`). The
+    entries of one reaction side whose referred species are equal give one
+    participant: it is a base participant if one of the entries is a base
+    entry, and its stoichiometry is the number of references (a reference
+    with a stoichiometry counting for that value).
 
     Args:
         reading_context: The reading context.
@@ -493,19 +474,24 @@ def make_participant(
         cd_base_participants = get_base_products(cd_reaction)
         cd_participant_links = get_product_links(cd_reaction)
         cd_species_references = get_products(cd_reaction)
-    species_model_element = get_alias_model_element(reading_context, cd_participant)
-    merge_key = get_species_merge_key(reading_context, cd_participant.get("alias"))
+    species_model_element = get_outermost_species_model_element(
+        reading_context, cd_participant.get("alias")
+    )
     cd_base_group = [
         cd_base_participant
         for cd_base_participant in cd_base_participants
-        if get_species_merge_key(reading_context, cd_base_participant.get("alias"))
-        == merge_key
+        if get_outermost_species_model_element(
+            reading_context, cd_base_participant.get("alias")
+        )
+        == species_model_element
     ]
     cd_link_group = [
         cd_participant_link
         for cd_participant_link in cd_participant_links
-        if get_species_merge_key(reading_context, cd_participant_link.get("alias"))
-        == merge_key
+        if get_outermost_species_model_element(
+            reading_context, cd_participant_link.get("alias")
+        )
+        == species_model_element
     ]
     cd_species_reference_group = [
         get_species_reference(cd_member, cd_species_references)

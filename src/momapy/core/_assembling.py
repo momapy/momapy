@@ -15,6 +15,32 @@ from momapy.core.mapping import LayoutModelMappingBuilder
 from momapy.core.model import Model
 
 
+def get_reachable_map_elements(map_element: MapElement) -> list[MapElement]:
+    """Return the map elements reachable from a map element.
+
+    The map elements are reached by following children and references, at
+    any depth. Each object is returned once, and `map_element` is not
+    returned unless it is reached again.
+
+    Args:
+        map_element: The map element to start from.
+
+    Returns:
+        The reachable map elements.
+    """
+    reachable_map_elements = {}
+    map_elements_to_visit = [map_element]
+    while map_elements_to_visit:
+        visited_map_element = map_elements_to_visit.pop()
+        for next_map_element in (
+            visited_map_element.children() + visited_map_element.references()
+        ):
+            if id(next_map_element) not in reachable_map_elements:
+                reachable_map_elements[id(next_map_element)] = next_map_element
+                map_elements_to_visit.append(next_map_element)
+    return list(reachable_map_elements.values())
+
+
 def make_layout_model_mapping(
     layout_elements: collections.abc.Iterable[LayoutElement],
     layout_model_pairs: collections.abc.Iterable[tuple[LayoutElement, ModelElement]],
@@ -24,8 +50,8 @@ def make_layout_model_mapping(
     Each pair gets one entry. The key of a layout element that draws a model
     element holds the layout element and the keys of the layout elements
     connected to it (by an arc end or a container) that draw an element
-    related to the model element (a descendant of it, or an element referred
-    to by it or by one of its descendants), or that draw nothing and are
+    related to the model element (an element reachable from it by following
+    children and references, at any depth), or that draw nothing and are
     connected by an arc end. The key of a layout element that draws nothing
     holds the layout element and the layout elements it refers to that draw
     nothing. A key with one layout element is a single key; otherwise it is a
@@ -94,11 +120,8 @@ def make_layout_model_mapping(
                     key_elements.append(reference)
         else:
             related_element_ids = {
-                id(descendant) for descendant in model_element.descendants()
-            } | {
-                id(reference)
-                for element in [model_element] + model_element.descendants()
-                for reference in element.references()
+                id(related_element)
+                for related_element in get_reachable_map_elements(model_element)
             }
             for connected_layout_element in (
                 layout_element.references()
