@@ -857,6 +857,17 @@ class TestMakeMap:
 
 
 class TestMakeMapErrors:
+    def test_child_of_two_map_elements_that_are_not_equal(self):
+        a = momapy.sbgn.pd.Macromolecule(label="A")
+        process = momapy.sbgn.pd.GenericProcess(
+            reactants=frozenset([momapy.sbgn.pd.Reactant(referred_element=a)])
+        )
+        with pytest.raises(ValueError, match="which are not equal"):
+            make_map(
+                momapy.sbgn.pd.SBGNPDMap,
+                [a, process, dataclasses.replace(process, reversible=True)],
+            )
+
     def test_reference_not_given(self):
         atp = momapy.sbgn.pd.SimpleChemical(label="ATP")
         reactant = momapy.sbgn.pd.Reactant(referred_element=atp)

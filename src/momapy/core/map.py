@@ -104,10 +104,12 @@ def make_map(
 
     Raises:
         ValueError: If an element of a pair is not under the given elements,
-            if an element referred to is neither under the given elements nor
-            equal to one of them, if merging would lose a reference, if two
-            pairs have equal layout elements that are not the same object, or
-            if no model collection accepts a top-level model element.
+            if a map element is a child of two map elements that are not
+            equal, if an element referred to is neither under the given
+            elements nor equal to one of them, if merging would lose a
+            reference, if two pairs have equal layout elements that are not
+            the same object, or if no model collection accepts a top-level
+            model element.
     """
     from momapy.positioning import fit
 

@@ -259,9 +259,10 @@ def merge_equal_map_elements(
         new element.
 
     Raises:
-        ValueError: If an element reachable from `top_level_map_elements` is
-            neither under them, nor equal to one of them, nor a descendant of
-            a reachable element, or if merging would lose a reference.
+        ValueError: If a map element is a child of two map elements that are
+            not equal, if an element reachable from `top_level_map_elements`
+            is neither under them, nor equal to one of them, nor a descendant
+            of a reachable element, or if merging would lose a reference.
     """
     top_level_map_elements = list(top_level_map_elements)
     kept_map_elements = {}
@@ -279,6 +280,14 @@ def merge_equal_map_elements(
         reachable_map_elements[id(map_element)] = map_element
         children = map_element.children()
         for child in children:
+            owner = map_element_id_to_owner.get(id(child))
+            if owner is not None and owner != map_element:
+                raise ValueError(
+                    f"{type(child).__name__} {child.id_!r} is a child of both "
+                    f"{type(owner).__name__} {owner.id_!r} and "
+                    f"{type(map_element).__name__} {map_element.id_!r}, which "
+                    "are not equal"
+                )
             map_element_id_to_owner[id(child)] = map_element
         map_elements_to_visit += reversed(children + map_element.references())
     top_level_map_element_ids = {
