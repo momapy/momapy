@@ -17,7 +17,7 @@ When reading a CellDesigner file, ID assignment is more complex than SBGN-ML: mo
 | ModificationResidue | `f"{template_id}_{residue_id}"` | composite | no layout | — | yes | Global uniqueness via parent |
 | Region | `f"{template_id}_{region_id}"` | composite | no layout | — | yes | Global uniqueness via parent |
 | Modification | `f"{species_id}_{residue_id}"` | composite | `f"{species_id}_{residue_id}_layout"` | composite | no | Deterministic from species + residue |
-| StructuralState | `f"{species_id}_{value}"` | composite | `f"{species_id}_{value}_layout"` | composite | no | Deterministic from species + value |
+| StructuralState | `f"{species_id}_{value}"` | composite | `f"{species_id}_{value}_layout"` | composite | no | Deterministic from species + value; with no value, `structural_state` replaces the value |
 | Reactant (base/link) | `metaid` or `f"{reaction_id}_{species_id}"` | sbml:`speciesReference/@metaid` or composite | `f"{model_id}_layout"` | derived from model id | yes | `metaid` preferred; layout only for link reactants and some base |
 | Product (base/link) | `metaid` or `f"{reaction_id}_{species_id}"` | sbml:`speciesReference/@metaid` or composite | `f"{model_id}_layout"` | derived from model id | yes | `metaid` preferred; layout only for link products and some base |
 | Modulator | `metaid` | sbml:`modifierSpeciesReference/@metaid` | `f"{metaid}_layout"` | derived from metaid | yes | `metaid` always present |

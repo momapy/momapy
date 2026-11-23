@@ -5,6 +5,47 @@ All notable changes to momapy will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+### Added
+
+- Build, take apart and merge maps with shared make_map, merge_maps and mapping rules *(core)*
+- Build, take apart and merge PD and AF maps from map elements *(sbgn)*
+- Mark reference fields of model elements *(core)*
+
+### Changed
+
+- Replace structural_states with a single structural_state *(celldesigner)* **BREAKING**
+- Move make_map and merge_maps to core.map, make get_layout_model_pairs a method *(core)*
+- Remove the SBGN collection tables and cluster rules *(sbgn)*
+- Build the model and mapping with the shared map-element code *(sbgn.io.sbgnml)*
+
+### Documentation
+
+- Rewrite the layout-model mapping catalogues and render the CellDesigner one
+- Remove the phospho4 sublayout example broken by containers *(demos)*
+
+### Fixed
+
+- Raise when a map element is a child of two map elements that are not equal *(core)*
+- Write containers and drawn copies from the layout-model mapping *(io)*
+- Refer to the outermost complex for references drawn to a subunit *(celldesigner.io)*
+- Merge equal elements with the shared reading helpers *(celldesigner.io)*
+- Merge equal elements with the shared reading helpers *(sbml.io.sbml)*
+- Read nested operators once, merge participants by owner and read containers *(sbgn.io.sbgnml)*
+- Measure and place skia text with linear metrics and subpixel positioning *(rendering)*
+- Reject equal glyphs only when they draw different model elements *(sbgn.io.sbgnml)*
+- Read AF tags, terminals, references and logic inputs with AF classes *(sbgn.io.sbgnml)*
+- Map boolean logic gates with their frozenset key *(celldesigner.io)*
+- Link complex members to the written complex alias id *(celldesigner.io)*
+
+### Other
+
+- Merge branch 'develop' into feat_make_maps
+
+### Testing
+
+- Remove the choose_compartment_layout tests
 ## [0.16.1] - 2026-10-20
 
 ### CI/CD
